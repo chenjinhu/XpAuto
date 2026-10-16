@@ -1,9 +1,12 @@
 package com.vixmobi.auto.debug;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -40,6 +43,14 @@ public final class SelectorFixtureActivity extends Activity {
         Button action = new Button(this); action.setText("测试点击"); action.setOnClickListener(view -> status.setText("点击成功"));
         action.setOnLongClickListener(view -> { status.setText("长按成功"); return true; }); root.addView(action);
         Button delayed = new Button(this); delayed.setText("延迟显示"); delayed.setOnClickListener(view -> handler.postDelayed(() -> status.setText("等待目标已出现"), 600)); root.addView(delayed);
+        // 控件也会发送窗口状态事件，用它验证 Activity 查询不会误认自定义 View。
+        Button eventTest = new Button(this); eventTest.setText("测试窗口事件"); eventTest.setOnClickListener(view -> {
+            AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+            event.setSource(view); event.setPackageName(getPackageName()); event.setClassName("com.vixmobi.auto.debug.FakeCustomView");
+            getSystemService(AccessibilityManager.class).sendAccessibilityEvent(event);
+        }); root.addView(eventTest);
+        Button dialog = new Button(this); dialog.setText("显示测试弹窗"); dialog.setOnClickListener(view ->
+                new AlertDialog.Builder(this).setMessage("Activity 查询测试弹窗").setPositiveButton("关闭测试弹窗", null).show()); root.addView(dialog);
         ScrollView scroll = new ScrollView(this); scroll.setId(R.id.selector_scroll);
         // 屏外节点的无障碍坐标可能被系统缓存，用实际 scrollY 验证滚动方向。
         scroll.setOnScrollChangeListener((view, x, y, oldX, oldY) -> status.setText("滚动位置：" + y));

@@ -289,3 +289,49 @@ Chrome 中节点分析器的截图命中、属性和树联动、XPath、右键�
 47 项 Android 单元测试、13 项插件测试通过。新增测试覆盖空选择器、TaskBase 继承、所有条件运算、别名、矩形、级联边界、XPath 更新、条件复用，以及引号、控制字符、正则反斜杠的转义。`scripts/verify-selector-output.cjs` 在 Pixel 7a / Android 16 验证真实 Javet 的 String、拼接、模板字符串、toString、toJSON、嵌套 JSON、print 与四级日志，确认调试和设备通道内容一致。
 
 真实 VS Code 扩展宿主验证 `print(text("搜索"))` 和链式正则选择器的日志内容，并通过断点、单步、控制台、异常、暂停恢复停止及反复断连回归；期间手机 PID 和安装时间不变。已更新一次 APK，并生成、安装 `vscode-extension/xpauto-0.4.1.vsix`。已有 VS Code 窗口可执行 `Developer: Reload Window` 载入新增提示，后续 F5 仍只同步脚本。
+
+## 当前应用信息 0.4.2
+
+新增全局 `getCurrentRunningPkg()` 与 `getRunningActivity()`，分别返回当前应用窗口包名和经过校验的 Activity 完整类名；空结果分别为 `""` 与 `null`，无需 Root。实现按窗口 ID 和包名隔离 Activity 缓存，忽略控件类名，服务断开时清理引用和缓存。窗口选择排除输入法与系统浮层。完整规则、兼容限制和脚本示例见 [当前应用与 Activity](running-app-api.md)。
+
+修正旧代码使用 `TYPE_WINDOWS_CHANGED` 读取 Activity 的错误，改为监听 `TYPE_WINDOW_STATE_CHANGED`。真机发现原先 100ms 的通知延迟可能把 Activity 事件合并成随后的控件事件，导致页面切换或服务重连后只剩 FrameLayout 类名；无障碍配置改为立即通知，事件处理不遍历节点树。类名校验仅使用桌面入口、HOME 与系统自动可见包，不申请 QUERY_ALL_PACKAGES。
+
+### 0.4.2 验证记录（2026-10-16）
+
+52 项 Android 单元测试、13 项插件测试通过。Pixel 7a / Android 16 连续两轮验证同包 Activity 切换、伪装为窗口变化的自定义控件事件、Dialog、键盘、系统设置、桌面、脚本悬浮窗，以及关闭和恢复无障碍服务；Activity 与系统实际前台组件核对一致。验证脚本通过 finally 恢复配置并返回首页，期间应用 PID 与安装时间不变。
+
+真实 VS Code 扩展宿主通过新增接口补全、断点、单步、调试控制台、异常暂停、忙循环暂停/恢复/停止、暂停时节点抓取与浮窗操作、多次断连回归；手机 PID 与安装时间保持不变。
+
+已更新手机原生实现并安装 `vscode-extension/xpauto-0.4.2.vsix`。已有 VS Code 窗口执行 `Developer: Reload Window` 后可使用新增函数提示；日常 F5 不编译、不安装。
+
+## 线程、工具、SQLite 与全局快捷操作（0.5.0）
+
+接口文档：[线程](thread-api.md)、[工具](utils-api.md)、[SQLite](sqlite-api.md)、[全局快捷操作](global-shortcut-api.md)。完整示例见 `examples/script-modules/main.js`，类型提示源为 `vscode-extension/types/xpauto.d.ts`。
+
+调试服务与旧本地入口共用 `ScriptModules`。增加会话资源时应同时接入 install/reset/cancel/finish，先停止子线程，再清理数据库、媒体和节点快照，最后关闭 V8。禁止在持有 Java 资源锁时等待另一个可能需要 V8 的线程。
+
+新增 JNI 的 Locker/Unlocker 头文件位于 `app/src/main/cpp/v8-public/`，来自 V8 15.2.124.17，许可证一并保留。未读取 Javet 私有对象内存。Javet 或 V8 升级须重新核对公开 ABI 和四架构编译。
+
+验证命令：`./gradlew :app:testDebugUnitTest :app:assembleDebug`、`node --test vscode-extension/test/*.test.js`、`node scripts/verify-script-modules.cjs`、`node scripts/verify-vscode-debug.mjs`。真机脚本通过 `XPAUTO_ADB` 指定 adb。新原生 API 需更新一次 APK，此后 F5 仍直接连接应用。
+
+本次验证还包括 `verify-shortcuts.cjs`（实际触摸事件、输入法、节点快照、停止与重跑）、`verify-utility-files.cjs`（ZIP 与媒体）、`verify-module-permissions.cjs`（权限与 app-op）。权限测试会恢复原设置。当前测试机的 ADB 可见 su，但应用自身不可见：已验证 Root 缺失时返回 false，以及 ADB 预授权后的成功/复用路径；不能将它视为该应用 Root 首次授权成功的实测结果。
+
+`verify-thread-debug.cjs` 已验证子线程断点、变量查看、继续、断点中停止、断点中断开再连接，应用进程保持不变。本轮 Android 单元测试 54 项、插件测试 15 项通过。
+
+## 截图接口（插件 0.6.0）
+
+截图授权、全屏/区域截图、Bitmap 和图片读写接入统一的 `ScriptModules`，详见 [截图 API](image-api.md)。`CaptureService` 单独声明 `mediaProjection` 前台服务类型，系统授权令牌只消费一次；普通横竖屏保持固定方形 Surface，截图时按实际尺寸裁掉系统居中的留白，脚本结束时释放服务、帧缓冲和会话图片。代码采用中文注释，JS 参数适配与 Android 投影生命周期分开。
+
+`type=0/1` 使用系统授权；代理模式尚未实现，`type=2` 返回 false。`captureScreenshot/captureScreenSurface` 按文档的非代理行为回退到全屏截图。Root 命令截图复用 Shell 的自定义 su 和取消机制。图片相对路径位于应用私有 `files/images`，不会读取电脑项目目录。
+
+### 系统属性与 0.6.0 验证记录（2026-10-16）
+
+新增全局 `getprop`、`setprop`，详见 [系统属性 API](system-properties-api.md)。`properties.js` 负责类型校验，`ShellApi` 负责参数引用和命令执行；读写分别默认普通权限和 Root，函数用本次执行结果计算返回值。继承自定义 su、超时和取消机制，不重复实现进程管理。
+
+62 项 Android 单元测试、19 项插件测试通过。截图真机测试在 Pixel 7a / Android 16 验证授权拒绝/超时、全屏尺寸与四色像素、区域裁剪、PNG/JPEG/WebP、Base64、图片回收与数量上限、横竖屏往返、安全窗口不泄露、释放后独立图片有效、重新授权，以及正常结束和运行中停止清理；测试前后应用 PID 不变。
+
+系统属性真机测试核对型号、系统版本和 SDK 与 ADB 一致，并验证默认值、非法参数和 Root 失败结果。该设备的应用进程找不到 su，因此 Root 截图和属性写入成功路径未获真机验证；受控 JVM 测试覆盖自定义 su、成功写入、特殊字符、清空、拒绝、超时和取消。
+
+后续排查确认：SukiSU 中已授权的是旧包 `com.xiaopang.xianyu`（UID 10314），新包 `com.vixmobi.auto`（UID 10319）的超级用户开关关闭，应用进程中 `/system/bin/su` 不可见。`persist.acp.instance_id` 属性名合法，错误发生在写入前。新包的 Root 授权尚待用户确认；排查步骤已补入系统属性文档。
+
+真实 VS Code 扩展宿主通过截图/系统属性补全、断点内 getprop、节点抓取、单步、控制台、异常、暂停/继续/停止和重复断连回归；整个调试过程的应用 PID 与安装时间保持不变。已更新一次手机 APK，并打包安装 `vscode-extension/xpauto-0.6.0.vsix`；已有 VS Code 窗口执行 `Developer: Reload Window` 载入新插件，日常 F5 不构建或安装 APK。

@@ -16,6 +16,7 @@ final class NodeAttributes {
     NodeAttributes(AccessibilityNodeInfo node, int depth, int index) { this.node = node; this.depth = depth; this.index = index; }
 
     Object get(String name) {
+        if (NodeSettings.blocked.contains(name)) return null;
         switch (name) {
             case "id": return text(node.getViewIdResourceName());
             case "text": return text(node.getText());
@@ -61,7 +62,7 @@ final class NodeAttributes {
     }
     Map<String, Object> all() {
         Map<String, Object> result = new LinkedHashMap<>();
-        for (String name : NAMES) result.put(name, get(name));
+        for (String name : NAMES) if (!NodeSettings.blocked.contains(name)) result.put(name, get(name));
         return result;
     }
     static String text(CharSequence value) { return value == null ? "" : value.toString(); }

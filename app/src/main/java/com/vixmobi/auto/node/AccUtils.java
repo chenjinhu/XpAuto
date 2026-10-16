@@ -24,17 +24,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AccUtils extends AccessibilityService {
-    public static AccessibilityService AccessibilityHelper;
+    public static volatile AccessibilityService AccessibilityHelper;
     private static final String TAG = tag;
 
-    public AccUtils() {
+    @Override protected void onServiceConnected() {
+        super.onServiceConnected();
+        RunningAppInfo.clear();
         AccessibilityHelper = this;
     }
-
-
-
-
-
+    /** 服务断开后立即清除引用与窗口记录，避免脚本继续读到旧页面。 */
+    private void clearConnectedService() {
+        if (AccessibilityHelper == this) {
+            AccessibilityHelper = null;
+            RunningAppInfo.clear();
+        }
+    }
+    @Override public boolean onUnbind(Intent intent) { clearConnectedService(); return super.onUnbind(intent); }
+    @Override public void onDestroy() { clearConnectedService(); super.onDestroy(); }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent accessibilityEvent) {
@@ -116,28 +122,15 @@ public class AccUtils extends AccessibilityService {
      * 获取当前Activity
      */
     public static String currentActivityName() {
-        return currentActivityName;
+        String activity = RunningAppInfo.getRunningActivity();
+        return activity == null ? "" : activity;
     }
     /**
      * 刷新当前activity
      * @param event
      */
     protected void refreshCurrentActivity(AccessibilityEvent event) {
-        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-            String packageName = String.valueOf(event.getPackageName());
-            String className = String.valueOf(event.getClassName());
-// 获取到了当前活动的包名和类名，可以进行相应处理
-             printLogMsg(packageName, 0);
-            if (
-                    className.startsWith("android.widget.") ||
-                            className.startsWith("android.view.") ||
-                            currentActivityName.equals(className)
-            ) {
-                return;
-            }
-            currentActivityName = className;
-            Log.i(TAG, "refreshCurrentActivity: " + className);
-        }
+        RunningAppInfo.onEvent(this, event);
     }
 
     protected void systemClickListener(AccessibilityEvent event) {

@@ -60,6 +60,62 @@ public class ShellApiTest {
         assertEquals(0, shell.getLastResult().code);
     }
 
+    @Test public void propertyReadPreservesWhitespaceAndUsesFallbackOnFailure() throws Exception {
+        shell.addSuBin(grant().toString());
+        executable("getprop", "case \"$1\" in\n"
+                + "ro.test.value) printf '  中文\\n \\n';;\n"
+                + "ro.test.empty) printf '\\n';;\n"
+                + "*) echo denied >&2; exit 1;;\nesac\n");
+        assertEquals("  中文\n ", shell.getprop("ro.test.value", "fallback", true, 2000));
+        assertEquals("fallback", shell.getprop("ro.test.empty", "fallback", true, 2000));
+        assertEquals(0, shell.getLastResult().code);
+        assertEquals("fallback", shell.getprop("ro.test.denied", "fallback", true, 2000));
+        assertEquals(1, shell.getLastResult().code);
+        assertTrue(shell.getLastResult().error.contains("denied"));
+    }
+
+    @Test public void propertyWriteQuotesValueAsOneArgumentAndReportsDenial() throws Exception {
+        shell.addSuBin(grant().toString());
+        Path valueFile = directory.resolve("property-value");
+        Path marker = directory.resolve("must-not-run");
+        executable("setprop", "[ \"$#\" = 2 ] || exit 2\n"
+                + "[ \"$1\" = debug.xpauto.test ] || { echo denied >&2; exit 1; }\n"
+                + "printf '%s' \"$2\" > " + ShellApi.quote(valueFile.toString()) + "\n");
+        String value = "中文 ' \" ; $(touch " + ShellApi.quote(marker.toString()) + ")\n末尾 ";
+        assertTrue(shell.setprop("debug.xpauto.test", value, true, 2000));
+        assertEquals(value, new String(Files.readAllBytes(valueFile), StandardCharsets.UTF_8));
+        assertFalse(Files.exists(marker));
+        assertTrue(shell.setprop("debug.xpauto.test", "", true, 2000));
+        assertEquals(0, Files.size(valueFile));
+        assertFalse(shell.setprop("ro.test.denied", "1", true, 2000));
+        assertEquals(1, shell.getLastResult().code);
+    }
+
+    @Test public void invalidPropertiesNeverRequestRootAndRootFailureIsFalse() throws Exception {
+        Path marker = directory.resolve("root-requested");
+        shell.addSuBin(executable("denied", "touch " + ShellApi.quote(marker.toString())
+                + "\necho denied >&2; exit 1\n").toString());
+        for (String name : new String[]{"", ".bad", "bad.", "bad..key", "bad;id", "bad\nkey"}) {
+            assertEquals("fallback", shell.getprop(name, "fallback", true, 2000));
+            assertFalse(shell.setprop(name, "1", true, 2000));
+        }
+        assertFalse(shell.setprop("debug.xpauto.test", "\0", true, 2000));
+        assertFalse(Files.exists(marker));
+        assertFalse(shell.setprop("debug.xpauto.test", "1", true, 2000));
+        assertTrue(Files.exists(marker));
+        assertTrue(shell.getLastResult().error.contains("denied"));
+    }
+
+    @Test public void propertyTimeoutReturnsFallbackAndCancellationStillInterrupts() throws Exception {
+        shell.addSuBin(grant().toString());
+        executable("getprop", "exec sleep 10\n");
+        assertEquals("fallback", shell.getprop("ro.test.slow", "fallback", true, 100));
+        assertTrue(shell.getLastResult().timedOut);
+        shell.cancel();
+        assertThrows(CancellationException.class, () -> shell.getprop("ro.test.slow", "", true, 2000));
+        assertThrows(CancellationException.class, () -> shell.setprop("debug.xpauto.test", "1", true, 2000));
+    }
+
     @Test public void drainsBothPipesBeyondCaptureLimit() {
         String command = "i=0; while [ $i -lt 20000 ]; do "
                 + "printf 'abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789\\n'; "

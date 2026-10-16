@@ -48,8 +48,6 @@ public class Constant {
     public static Context context = null;
     public static MainActivity mainActivity = null;
 
-    // 当前ActivityName
-    public static volatile String currentActivityName = "";
     // 屏幕宽高
     public static int text_size = 11;
     public static int mWidth = 1440;

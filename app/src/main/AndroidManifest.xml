@@ -22,11 +22,26 @@
     <!-- 悬浮窗 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INJECT_EVENTS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 仅由脚本显式调用自允许接口时通过 Root/ADB 授予，普通安装不会获得此权限。 -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+
+    <!-- 仅查询有桌面入口的应用，用于校验窗口事件中的 Activity 类名。 -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
 
     <!-- 脚本可访问用户指定的 HTTP/WS 地址；HTTPS/WSS 仍使用系统证书校验。 -->
     <application
@@ -55,6 +70,17 @@
 <!--                android:name="android.support.FILE_PROVIDER_PATHS"-->
 <!--                android:resource="@xml/provider_paths"/>-->
 <!--        </provider>-->
+        <activity android:name=".permissions.RuntimePermissionActivity" android:exported="false"
+            android:excludeFromRecents="true" android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar" />
+        <activity android:name=".image.CapturePermissionActivity" android:exported="false"
+            android:excludeFromRecents="true" android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar" />
+        <service android:name=".image.CaptureService" android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+        <service android:name=".input.ScriptInputMethod" android:label="XpAuto 脚本输入法"
+            android:exported="true" android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/script_input_method" />
+        </service>
         <!-- 前台服务 -->
         <activity android:name="com.vixmobi.auto.devtools.DeveloperActivity"
             android:exported="true" android:label="XpAuto">

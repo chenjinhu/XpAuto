@@ -1,5 +1,7 @@
 # Shell API
 
+直接读取和写入 Android 系统属性可使用全局 `getprop()`、`setprop()`，详见 [系统属性 API](system-properties-api.md)。
+
 脚本中使用全局对象 `shell`，无需导入。接口命名和基础返回值参考 [EasyClick Shell API](https://ieasyclick.com/docs/funcs/shell-api)。EasyClick 的 Root 命令接口名是 `sudo`，XpAuto 同时提供 `ROOT` 别名。
 
 ## 权限与运行方式
@@ -7,6 +9,8 @@
 普通命令以 **XpAuto 应用自身 UID** 执行，不具有 ADB shell 的权限。当前版本没有代理模式或 Shizuku 后端。静默安装、卸载、停止其他应用需要设备已配置 Root，并在 Root 管理器中允许 **XpAuto**。`su()` 只能申请已有 Root 环境的授权，不能给未 Root 的手机获取 Root。
 
 所有方法同步返回。脚本运行时，VS Code 和手机显示运行状态；失败详情同时写入调试控制台和手机运行控制台。检查命令是否成功应读取 `getLastResult().code`，不能只看返回字符串是否为空。Root 权限按需申请，不是启动 XpAuto 的必需权限。
+
+改包名后需在 Root 管理器中核对 `com.vixmobi.auto` 的授权，不能沿用同名旧应用 `com.xiaopang.xianyu` 的授权。默认 su 路径全部报 `No such file or directory` 时，按 [Root 启动失败排查](system-properties-api.md#su-报-no-such-file-or-directory) 检查当前应用的权限与路径可见性。
 
 ## 接口一览
 
@@ -139,6 +143,8 @@ XPAUTO_SHELL_FIXTURE_APK="$XPAUTO_TEST_DIR/fixture.apk" node scripts/verify-shel
 ### 本次验证记录
 
 2026-10-16：Pixel 7a / Android 16 / KernelSU 4.1.3，已手动授予 XpAuto Root：
+
+以下成功记录对应旧包 `com.xiaopang.xianyu`（UID 10314）。改包后的 `com.vixmobi.auto` 使用 UID 10319，需要独立授权，不能沿用这份成功记录。
 
 - 14 项 Shell JVM 测试通过，3 项 VS Code 协议测试通过，debug APK 构建通过。
 - 应用实际 UID 为 10314；Root 命令 UID 为 0；自定义 su 路径和两种 Root 命令别名均通过真实 JS 桥接调用。

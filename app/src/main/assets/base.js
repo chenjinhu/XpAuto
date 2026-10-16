@@ -66,9 +66,9 @@ const boundsInScreen = () => selector().boundsInScreen();
 
 //  ---- 点击事件 ----//
 const click = (node) => task._clickNode(node);
-const clickPoint = (x, y) => task._clickPoint(x, y);
+const clickPoint = (x, y) => __xpautoGesture.press(x, y, 80);
 //  ---- 滑动事件 ----//
-const swipe = (x1, y1, x2, y2, duration) => task._swipe(x1, y1, x2, y2, duration);
+const swipe = (...args) => args.length === 4 ? __xpautoMoveNode(args[0],args[1],args[2],args[3],false) : swipeToPoint(...args);
 
 // -------------------- 日志输出类 -------------------//
 // 旧脚本继续可用，新代码统一使用 logd/logi/logw/loge。
@@ -84,6 +84,9 @@ const menu = () => task._menu();
 const openNotification = () => task._openNotification();
 const openQuickSettings = () => task._openQuickSettings();
 const recentApps       = () => task._recentApps();
+// 包名读取应用窗口，Activity 使用经过校验的窗口事件；都不要求 Root。
+const getCurrentRunningPkg = () => task._getCurrentRunningPkg();
+const getRunningActivity = () => task._getRunningActivity();
 // -------------------- 时间类 -------------------//
 const sleep = (ms) => __xpautoNetworkSleep(ms);
 

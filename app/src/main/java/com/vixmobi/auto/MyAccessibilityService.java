@@ -20,6 +20,7 @@ public class MyAccessibilityService extends AccUtils {
     @RequiresApi(24)
     public void onAccessibilityEvent(AccessibilityEvent accessibilityEvent) {
 
+        com.vixmobi.auto.node.NodeSettings.onEvent(accessibilityEvent);
         // 刷新当前 Activity()
         super.refreshCurrentActivity(accessibilityEvent);
 

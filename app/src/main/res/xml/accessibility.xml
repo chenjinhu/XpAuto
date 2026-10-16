@@ -4,10 +4,11 @@
     android:accessibilityFlags="flagDefault|flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
     android:accessibilityFeedbackType="feedbackSpoken"
     android:canRetrieveWindowContent="true"
-    android:notificationTimeout="100"
+    android:notificationTimeout="0"
     android:canPerformGestures="true"
     />
 
+    <!-- 立即接收事件，避免 Activity 窗口事件在延迟合并时被后续控件事件覆盖。 -->
     <!--FLAG_DEFAULT    默认标志位，表示使用默认的配置-->
     <!-- |flagIncludeNotImportantViews -->
     <!--FLAG_INCLUDE_NOT_IMPORTANT_VIEWS    包括不重要的视图。通常情况下，可访问性服务只会关注重要的视图，但设置了该标志位后，可访问性服务将会关注所有的视图-->

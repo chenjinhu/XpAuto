@@ -257,6 +257,7 @@ public final class DeveloperServer extends WebSocketServer {
                 text -> consoleMessage("error", text), cancelled::get);
         private final ScriptLogApi scriptLog = new ScriptLogApi(context, this::consoleMessage,
                 DeveloperService::clearLogs, cancelled::get);
+        private final com.vixmobi.auto.runtime.ScriptModules modules = new com.vixmobi.auto.runtime.ScriptModules(context, shell, text -> consoleMessage("error", text));
         private volatile V8Runtime runtime;
         private volatile V8Inspector inspector;
         private volatile InspectorInterrupt interrupt;
@@ -281,12 +282,13 @@ public final class DeveloperServer extends WebSocketServer {
                         global.set("engines", TaskBase.class);
                         global.set("__xpautoHttp", http);
                         global.set("__xpautoLog", scriptLog);
-                        global.set("utils", Utils.class);
+
                         global.set("file", FileUtils.class);
                         global.set("shell", shell);
                         global.set("floaty", floaty);
                     }
-                    for (String asset : new String[] { "logging.js", "http.js", "base.js" }) {
+                    modules.install(runtime);
+                    for (String asset : com.vixmobi.auto.runtime.ScriptModules.ASSETS) {
                         try (InputStream stream = context.getAssets().open(asset)) {
                             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                             byte[] buffer = new byte[8192];
@@ -344,6 +346,7 @@ public final class DeveloperServer extends WebSocketServer {
                     floaty.resetCancellation();
                     http.resetCancellation();
                     scriptLog.reset();
+                    modules.reset();
                     floaty.clearWindows();
                     resourceName = sourceName;
                     noDebug = params.optBoolean("noDebug", false);
@@ -413,6 +416,7 @@ public final class DeveloperServer extends WebSocketServer {
                 if (!cancelled.get()) consoleMessage("error", errorText);
                 Log.i(TAG, "Script ended: " + errorText);
             } finally {
+                modules.finish(runtime);
                 floaty.clearWindows();
                 http.clearConnections();
                 scriptLog.finish(success && !cancelled.get());
@@ -446,13 +450,14 @@ public final class DeveloperServer extends WebSocketServer {
             boolean floatyExecuting = floaty.isExecuting();
             boolean httpExecuting = http.isExecuting();
             boolean nodeExecuting = com.vixmobi.auto.node.NodeQuery.isExecuting();
+            modules.cancel();
             shell.cancel();
             floaty.cancel();
             http.cancel();
             Constant.killThread = true;
             Constant.isStop = false;
             V8Runtime current = runtime;
-            if (current != null && (running.get() || shellExecuting || floatyExecuting || httpExecuting || nodeExecuting)) {
+            if (current != null && (running.get() || shellExecuting || floatyExecuting || httpExecuting || nodeExecuting || modules.isExecuting() || com.vixmobi.auto.runtime.ScriptBlocking.isExecuting())) {
                 current.terminateExecution();
                 if (paused.get() && inspector != null) {
                     try { inspector.sendRequest("{\"id\":-1,\"method\":\"Debugger.resume\"}"); }
@@ -476,6 +481,7 @@ public final class DeveloperServer extends WebSocketServer {
             http.dispose();
             executor.execute(() -> {
                 try {
+                    if (runtime != null) modules.finish(runtime);
                     if (inspector != null) inspector.close();
                     if (runtime != null) runtime.close();
                     if (interrupt != null) interrupt.releaseAfterRuntimeClose();

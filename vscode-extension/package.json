@@ -2,7 +2,7 @@
   "name": "xpauto",
   "displayName": "XpAuto",
   "description": "连接 Android，调试 JavaScript、提供代码提示、抓取 UI 节点与生成选择器代码。",
-  "version": "0.4.1",
+  "version": "0.6.0",
   "publisher": "xpauto",
   "license": "UNLICENSED",
   "engines": {
@@ -213,7 +213,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "package": "vsce package --allow-missing-repository --out xpauto-0.4.1.vsix"
+    "package": "vsce package --allow-missing-repository --out xpauto-0.6.0.vsix"
   },
   "dependencies": {
     "typescript": "5.9.3",

@@ -24,6 +24,8 @@ test('提示正确推断全局、链式选择器、节点变量和集合，避�
         for (const name of ['logd','logi','logw','loge']) assert.ok(names('log').includes(name));
         assert.ok(names('toast("done", { dur').includes('duration'));
         assert.ok(names('setLog').includes('setLogLevel'));
+        assert.ok(names('getCurrent').includes('getCurrentRunningPkg'));
+        assert.ok(names('getRunning').includes('getRunningActivity'));
         assert.ok(names('shell.').includes('execCommand'));
         assert.ok(names('text("确定").').includes('getOneNodeInfo'));
         assert.ok(names('pkg').includes('pkgMatch'));

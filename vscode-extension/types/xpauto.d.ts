@@ -310,6 +310,14 @@ declare function back(): boolean;
  * @xpauto
  */
 declare function home(): boolean;
+/** 获取前台应用窗口的包名，需要无障碍服务；没有可读取窗口时返回空字符串
+ * @xpauto
+ */
+declare function getCurrentRunningPkg(): string;
+/** 获取当前窗口的 Activity 完整类名，需要无障碍服务；尚未收到有效事件或无法校验时返回 null
+ * @xpauto
+ */
+declare function getRunningActivity(): string | null;
 /** 执行系统电源操作
  * @xpauto
  */
@@ -1200,6 +1208,19 @@ interface XpAutoShellResult {
  */
 declare const shell: XpAutoShell;
 
+/**
+ * 读取 Android 系统属性，默认普通权限；不存在、为空或执行失败时返回 defaultValue（默认空字符串）。
+ * 保留属性值中的空白。root 默认 false，timeoutMs 默认 60000；失败详情见 shell.getLastResult()。
+ * @xpauto
+ */
+declare function getprop(name: string, defaultValue?: string, root?: boolean, timeoutMs?: number): string;
+/**
+ * 写入 Android 系统属性，返回命令是否成功；value 转为字符串，空字符串表示清空值。
+ * root 默认 true，复用 shell.addSuBin()；timeoutMs 默认 60000。只读属性或系统策略可能拒绝写入。
+ * @xpauto
+ */
+declare function setprop(name: string, value: string | number | boolean, root?: boolean, timeoutMs?: number): boolean;
+
 interface XpAutoHttpOptions {
 /** 请求地址，支持 HTTP/HTTPS
  * @xpauto
@@ -1669,3 +1690,668 @@ interface XpAutoFloatView {
      */
     getChildAt(index: number): XpAutoFloatView | null;
 }
+
+// 线程、工具、数据库与快捷操作（所有时间单位均为毫秒）。
+type XpAutoThreadId = number;
+type XpAutoTarget = XpAutoSelector | XpAutoNode;
+/** 延迟执行回调，保留闭包；sleep 时允许其他线程运行
+ * @xpauto
+ */
+declare function setTimeout(callback: () => void, timeout?: number): XpAutoThreadId;
+/** 取消延迟任务
+ * @xpauto
+ */
+declare function cancelTimeout(threadId: XpAutoThreadId): boolean;
+/** 按固定间隔重复回调，上一轮完成后再等待 interval
+ * @xpauto
+ */
+declare function setInterval(callback: () => void, interval: number): XpAutoThreadId;
+/** 取消周期任务
+ * @xpauto
+ */
+declare function cancelInterval(threadId: XpAutoThreadId): boolean;
+/** 每 50ms 检查条件，严格返回 true 时成功
+ * @xpauto
+ */
+declare function execSync(condition: () => unknown, timeout: number): boolean;
+/** 闭区间内随机安全整数
+ * @xpauto
+ */
+declare function random(min: number, max: number): number;
+/** 直接执行节点点击动作
+ * @xpauto
+ */
+declare function clickEx(target: XpAutoTarget): boolean;
+/** 直接执行节点长按动作
+ * @xpauto
+ */
+declare function longClickEx(target: XpAutoTarget): boolean;
+/** 随机匹配节点内随机坐标点击
+ * @xpauto
+ */
+declare function clickRandom(target: XpAutoSelector): boolean;
+/** 随机匹配节点执行点击动作
+ * @xpauto
+ */
+declare function clickRandomEx(target: XpAutoSelector): boolean;
+/** 区域内随机坐标点击
+ * @xpauto
+ */
+declare function clickRandomRect(rect: XpAutoRect | number[]): boolean;
+/** 点击区域中心
+ * @xpauto
+ */
+declare function clickCenter(rect: XpAutoRect | number[]): boolean;
+/** 点击文本完全匹配的节点
+ * @xpauto
+ */
+declare function clickText(text: string): boolean;
+/** 长按节点中心 600ms
+ * @xpauto
+ */
+declare function longClick(target: XpAutoTarget): boolean;
+/** 长按坐标 600ms
+ * @xpauto
+ */
+declare function longClickPoint(x: number, y: number): boolean;
+/** 按住坐标指定时长 1～60000ms
+ * @xpauto
+ */
+declare function press(x: number, y: number, delay: number): boolean;
+/** 最多三指按事件延迟执行，默认超时 10000ms
+ * @xpauto
+ */
+declare function multiTouch(touch1: XpAutoTouchEvent[], touch2?: XpAutoTouchEvent[] | null, touch3?: XpAutoTouchEvent[] | null, timeout?: number): boolean;
+/** 释放当前续接的触点
+ * @xpauto
+ */
+declare function resetAllTouchState(): boolean;
+/** 无指针向前滚动
+ * @xpauto
+ */
+declare function scrollForward(target: XpAutoTarget): boolean;
+/** 无指针向后滚动
+ * @xpauto
+ */
+declare function scrollBackward(target: XpAutoTarget): boolean;
+/** 从节点中心滑动，另支持旧五坐标参数形式
+ * @xpauto
+ */
+declare function swipe(target: XpAutoTarget, endX: number, endY: number, duration: number): boolean;
+/** 坐标滑动，等待系统手势完成
+ * @xpauto
+ */
+declare function swipeToPoint(startX: number, startY: number, endX: number, endY: number, duration: number): boolean;
+/** 根据节点支持的滚动动作判断边界；缺失或非滚动节点返回 false
+ * @xpauto
+ */
+declare function isScrollEnd(direction: "UP" | "DOWN" | "LEFT" | "RIGHT", target: XpAutoTarget): boolean;
+/** 先按住 600ms，再拖动 duration 毫秒
+ * @xpauto
+ */
+declare function drag(startX: number, startY: number, endX: number, endY: number, duration: number): boolean;
+/** 拖动一个节点到另一个节点中心
+ * @xpauto
+ */
+declare function dragTo(target: XpAutoTarget, destination: XpAutoTarget, duration: number): boolean;
+/** 拖动节点到坐标
+ * @xpauto
+ */
+declare function dragToPoint(target: XpAutoTarget, endX: number, endY: number, duration: number): boolean;
+/** 通过节点设置文本，无需输入法
+ * @xpauto
+ */
+declare function inputText(target: XpAutoTarget, content: string): boolean;
+/** 写入剪贴板并执行节点粘贴
+ * @xpauto
+ */
+declare function pasteText(target: XpAutoTarget, content: string): boolean;
+/** 清空节点文本
+ * @xpauto
+ */
+declare function clearTextField(target: XpAutoTarget): boolean;
+/** 获取输入焦点
+ * @xpauto
+ */
+declare function setFocus(target: XpAutoTarget): boolean;
+/** 系统当前是否选择 XpAuto 脚本输入法
+ * @xpauto
+ */
+declare function currentIsOurIme(): boolean;
+/** XpAuto 输入法视图是否显示
+ * @xpauto
+ */
+declare function imeInputViewShown(): boolean;
+/** 由 XpAuto 输入法提交文本；null 使用当前焦点
+ * @xpauto
+ */
+declare function imeInputText(target: XpAutoTarget | null, content: string): boolean;
+/** 输入法发送 KeyEvent 或 1000～1005 编辑动作
+ * @xpauto
+ */
+declare function imeInputKeyCode(target: XpAutoTarget | null, code: number): boolean;
+/** 最近无障碍事件的 Unix 毫秒时间
+ * @xpauto
+ */
+declare function lastNodeEventTime(): number;
+/** 当前是否有匹配节点
+ * @xpauto
+ */
+declare function has(target: XpAutoSelector): boolean;
+/** 等待 Activity 完整类名出现
+ * @xpauto
+ */
+declare function waitExistActivity(activity: string, timeout: number): boolean;
+/** 等待匹配节点出现
+ * @xpauto
+ */
+declare function waitExistNode(target: XpAutoSelector, timeout: number): boolean;
+/** 读取所有匹配节点文本
+ * @xpauto
+ */
+declare function getText(target: XpAutoSelector): string[];
+/** 获取节点数组；调用者负责 recycle
+ * @xpauto
+ */
+declare function getNodeInfo(target: XpAutoSelector, timeout?: number): XpAutoNode[];
+/** 获取首个节点；未找到返回 null
+ * @xpauto
+ */
+declare function getOneNodeInfo(target: XpAutoSelector, timeout?: number): XpAutoNode | null;
+/** 读取匹配节点的指定属性
+ * @xpauto
+ */
+declare function getNodeAttrs(target: XpAutoSelector, attribute: keyof XpAutoNodeInfo | "className" | "packageName"): unknown[];
+/** 设置抓取模式、可见性和遍历顺序
+ * @xpauto
+ */
+declare function setFetchNodeMode(mode: 1 | 2, fetchInvisible?: boolean, fetchNotImportant?: boolean, algorithm?: "nsf" | "bsf" | "dsf"): boolean;
+/** 设置节点深度上限 0～80 和静态遍历方式
+ * @xpauto
+ */
+declare function setNodeDumpParam(data: {dumpMethod?: 1 | 2 | 3; maxDepth?: number}): boolean;
+/** 逗号分隔屏蔽属性，空串恢复
+ * @xpauto
+ */
+declare function setBlockNodeAttr(attributes: string): boolean;
+/** 增加无障碍抓取标志，0 刷新节点
+ * @xpauto
+ */
+declare function addNodeFlag(flag: number): boolean;
+/** 移除抓取标志，0 刷新节点
+ * @xpauto
+ */
+declare function removeNodeFlag(flag: number): boolean;
+/** 输出节点 XML
+ * @xpauto
+ */
+declare function dumpXml(): string;
+/** 冻结当前节点树，直到 releaseNode 或脚本结束
+ * @xpauto
+ */
+declare function lockNode(): boolean;
+/** 释放冻结快照
+ * @xpauto
+ */
+declare function releaseNode(): void;
+/** 请求 Manifest 已声明的普通动态权限；默认超时 30000ms
+ * @xpauto
+ */
+declare function requestRuntimePermission(permissions: string[], timeout?: number): boolean;
+/** 显式通过 Root 设置 PROJECT_MEDIA app-op，不创建截图令牌
+ * @xpauto
+ */
+declare function tryGetProjectionPermission(): boolean;
+/** 首次通过 Root 授予 WRITE_SECURE_SETTINGS 并启用服务，后续调用无需 Root
+ * @xpauto
+ */
+declare function tryGetAccStartupPermission(): boolean;
+/** 单指续接：Down
+ * @xpauto
+ */
+declare function touchDown(x: number, y: number): boolean;
+/** 无障碍模式忽略 pointerId，多指使用 multiTouch
+ * @xpauto
+ */
+declare function touchDownEx(x: number, y: number, pointerId?: number): boolean;
+/** 单指续接：Move
+ * @xpauto
+ */
+declare function touchMove(x: number, y: number): boolean;
+/** 无障碍模式忽略 pointerId，多指使用 multiTouch
+ * @xpauto
+ */
+declare function touchMoveEx(x: number, y: number, pointerId?: number): boolean;
+/** 单指续接：Up
+ * @xpauto
+ */
+declare function touchUp(x: number, y: number): boolean;
+/** 无障碍模式忽略 pointerId，多指使用 multiTouch
+ * @xpauto
+ */
+declare function touchUpEx(x: number, y: number, pointerId?: number): boolean;
+interface XpAutoTouchEvent { action: 0 | 1 | 2; x: number; y: number; pointer?: number; delay?: number; }
+interface XpAutoThread {
+/** 启动共享闭包线程，最多同时 32 个
+ * @xpauto
+ */
+    execAsync(callback: () => void): XpAutoThreadId;
+/** 轮询条件直到 true 或超时
+ * @xpauto
+ */
+    execSync(condition: () => unknown, timeout: number): boolean;
+/** 协作取消线程；sleep 和阻塞等待会响应
+ * @xpauto
+ */
+    cancelThread(id: XpAutoThreadId): boolean;
+/** 已取消、已结束或不存在均返回 true
+ * @xpauto
+ */
+    isCancelled(id: XpAutoThreadId): boolean;
+/** 取消所有子线程，保留主脚本
+ * @xpauto
+ */
+    stopAll(): void;
+}
+/** 线程管理
+ * @xpauto
+ */
+declare const thread: XpAutoThread;
+interface XpAutoSqlite {
+/** 连接或创建数据库，相对路径位于应用 databases 目录
+ * @xpauto
+ */
+    connectOrCreateDb(path: string): boolean;
+/** 创建自增 id 和 TEXT 字段，复杂结构使用 execSql
+ * @xpauto
+ */
+    createTable(table: string, columns: string[]): boolean;
+/** 通过参数绑定插入一行
+ * @xpauto
+ */
+    insert(table: string, values: Record<string, unknown>): boolean;
+/** 更新匹配行，省略条件更新所有行
+ * @xpauto
+ */
+    update(table: string, values: Record<string, unknown>, whereSql?: string): boolean;
+/** 查询返回普通 JS 数组，失败返回 null
+ * @xpauto
+ */
+    query(sql: string): Record<string, unknown>[] | null;
+/** 执行删除 SQL
+ * @xpauto
+ */
+    delete(sql: string): boolean;
+/** 执行建表、修改或事务 SQL
+ * @xpauto
+ */
+    execSql(sql: string): boolean;
+/** 删除表
+ * @xpauto
+ */
+    dropTable(table: string): boolean;
+/** 关闭并删除当前数据库
+ * @xpauto
+ */
+    dropDatabase(): boolean;
+/** 关闭连接
+ * @xpauto
+ */
+    close(): boolean;
+/** 最近操作错误，成功后清除
+ * @xpauto
+ */
+    getErrorMsg(): string | null;
+}
+/** SQLite 数据库
+ * @xpauto
+ */
+declare const sqlite: XpAutoSqlite;
+interface XpAutoEncodeDecoder {
+/** AES 加密到 Base64，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    aesEncrypt(data: string, password: string): string | null;
+/** AES 从 Base64 解密，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    aesDecrypt(data: string, password: string): string | null;
+/** DES 加密到 Base64，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    desEncrypt(data: string, password: string): string | null;
+/** DES 从 Base64 解密，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    desDecrypt(data: string, password: string): string | null;
+/** DES3 加密到 Base64，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    des3Encrypt(data: string, password: string): string | null;
+/** DES3 从 Base64 解密，密钥规则见 utils-api.md
+ * @xpauto
+ */
+    des3Decrypt(data: string, password: string): string | null;
+/** 当前线程最近加解密错误
+ * @xpauto
+ */
+    getErrorMsg(): string | null;
+}
+/** 对称加解密
+ * @xpauto
+ */
+declare const encodeDecoder: XpAutoEncodeDecoder;
+interface XpAutoActivityOptions { action?: string; uri?: string; type?: string; pkg?: string; className?: string; flag?: number; [extra: string]: unknown; }
+interface XpAutoBitmap {
+/** 图像宽度
+ * @xpauto
+ */
+    getWidth(): number;
+/** 图像高度
+ * @xpauto
+ */
+    getHeight(): number;
+/** 释放图像内存
+ * @xpauto
+ */
+    recycle(): void;
+}
+interface XpAutoUtils {
+/** 按 Intent 参数启动 Activity
+ * @xpauto
+ */
+    openActivity(options: XpAutoActivityOptions): boolean;
+/** 生成经过 shell 转义的启动命令
+ * @xpauto
+ */
+    getStartActivityCmd(options: XpAutoActivityOptions): string;
+/** 按 Android action 打开界面
+ * @xpauto
+ */
+    openIntentAction(action: string): boolean;
+/** 扫描图片到图库，文件应位于共享媒体目录
+ * @xpauto
+ */
+    insertImageToAlbum(path: string): boolean;
+/** 扫描视频到图库
+ * @xpauto
+ */
+    insertVideoToAlbum(path: string): boolean;
+/** 压缩文件或目录，可选 AES 密码
+ * @xpauto
+ */
+    zip(zipFile: string, password: string | null, files: string[]): boolean;
+/** 解压 UTF-8 ZIP
+ * @xpauto
+ */
+    unzip(zipFile: string, password: string | null, destDir: string): boolean;
+/** 指定 ZIP 文件名编码，例如 GBK
+ * @xpauto
+ */
+    unzipWithEncode(zipFile: string, password: string | null, destDir: string, fileNameEncode: string): boolean;
+/** 读取 ZIP 内 UTF-8 文本，最多 16MB
+ * @xpauto
+ */
+    readFileInZip(zipFile: string, password: string | null, entry: string): string | null;
+/** 生成二维码 Bitmap，尺寸 32～4096
+ * @xpauto
+ */
+    createQRCode(content: string, width: number, height: number, logo?: XpAutoBitmap | null): XpAutoBitmap | null;
+/** 识别二维码
+ * @xpauto
+ */
+    decodeQRCode(bitmap: XpAutoBitmap): string | null;
+/** 保存 Bitmap 为 PNG
+ * @xpauto
+ */
+    saveBitmap(bitmap: XpAutoBitmap, path: string): boolean;
+/** 读取整型配置，缺失返回 0
+ * @xpauto
+ */
+    readConfigInt(json: Record<string, unknown>, key: string): number;
+/** 读取字符串配置，缺失返回空串
+ * @xpauto
+ */
+    readJSONString(json: Record<string, unknown>, key: string): string;
+/** 是否为 null 或 undefined
+ * @xpauto
+ */
+    isObjectNull(value: unknown): boolean;
+/** 是否非 null 且非 undefined
+ * @xpauto
+ */
+    isObjectNotNull(value: unknown): boolean;
+/** 严格等于 true
+ * @xpauto
+ */
+    isTrue(value: unknown): boolean;
+/** 按 0～100 百分比随机返回 true
+ * @xpauto
+ */
+    getRatio(ratio: number): boolean;
+/** 闭区间随机安全整数
+ * @xpauto
+ */
+    getRangeInt(min: number, max: number): number;
+/** 读取文件的 MD5
+ * @xpauto
+ */
+    fileMd5(path: string): string | null;
+/** UTF-8 字符串的 MD5
+ * @xpauto
+ */
+    dataMd5(data: unknown): string | null;
+/** 1～15 位随机整数
+ * @xpauto
+ */
+    randomInt(length: number): number;
+/** 随机大小写英文字母和数字
+ * @xpauto
+ */
+    randomCharNumber(length: number): string;
+/** 读取 APK 包名
+ * @xpauto
+ */
+    getApkPkgName(path: string): string;
+/** 检查可见的已安装应用
+ * @xpauto
+ */
+    isAppExist(packageName: string): boolean;
+/** 读取版本号，未找到为 0
+ * @xpauto
+ */
+    getAppVersionCode(packageName: string): number;
+/** 读取版本名，未找到为空串
+ * @xpauto
+ */
+    getAppVersionName(packageName: string): string;
+/** 写入剪贴板
+ * @xpauto
+ */
+    setClipboardText(text: string): boolean;
+/** 读取剪贴板，受 Android 前台/默认输入法限制
+ * @xpauto
+ */
+    getClipboardText(): string;
+/** 异步播放本地音频
+ * @xpauto
+ */
+    playMp3(path: string, loop?: boolean): boolean;
+/** 等待音频结束，可取消；循环播放需 stopMp3
+ * @xpauto
+ */
+    playMp3WaitEnd(path: string, loop?: boolean): boolean;
+/** 停止并释放播放器
+ * @xpauto
+ */
+    stopMp3(): boolean;
+}
+interface XpAutoNode {
+/** 获取输入焦点
+ * @xpauto
+ */
+    setFocus(): boolean;
+/** 检查节点是否暴露指定系统动作
+ * @xpauto
+ */
+    hasAction(action: number): boolean;
+}
+
+
+/** 截图对象，可独立回收；脚本结束时自动回收。
+ * @xpauto
+ */
+interface XpAutoImage extends XpAutoBitmap {
+/** 是否已经回收
+ * @xpauto
+ */
+    isRecycled(): boolean;
+/** 可读的图片尺寸与回收状态
+ * @xpauto
+ */
+    toString(): string;
+}
+interface XpAutoBitmap {
+/** 是否已经回收
+ * @xpauto
+ */
+    isRecycled(): boolean;
+}
+interface XpAutoImageApi {
+/** 申请屏幕共享。timeout 默认 10000ms；0/1 使用系统授权，2 代理模式暂不支持并返回 false。系统弹窗需用户确认。
+ * @xpauto
+ */
+    requestScreenCapture(timeout?: number, type?: 0 | 1 | 2): boolean;
+/** 释放投影和前台通知；再次截图需要重新申请，不回收已经返回的图片。
+ * @xpauto
+ */
+    releaseScreenCapture(): void;
+/** 区域截图，坐标为起点和终点；缺省、负数或空区域表示全屏。retryNumber 默认 3，范围 0～20。
+ * @xpauto
+ */
+    captureScreen(retryNumber?: number, x?: number, y?: number, ex?: number, ey?: number): XpAutoImage | null;
+/** 截取全屏；失败返回 null，通过 getErrorMsg 查看原因。
+ * @xpauto
+ */
+    captureFullScreen(): XpAutoImage | null;
+/** 全屏截图扩展；当前没有代理模式，与 captureFullScreen 相同。
+ * @xpauto
+ */
+    captureFullScreenEx(): XpAutoImage | null;
+/** 没有代理服务时回退到已授权的全屏截图。
+ * @xpauto
+ */
+    captureScreenshot(): XpAutoImage | null;
+/** 没有代理服务时回退到已授权的全屏截图。
+ * @xpauto
+ */
+    captureScreenSurface(): XpAutoImage | null;
+/** 返回 Android Bitmap。坐标为起点/终点；format 和 q 只校验兼容参数，授权模式直接返回无损像素。
+ * @xpauto
+ */
+    captureScreenBitmap(format?: 'png' | 'jpg' | 'jpeg' | 'webp', x?: number, y?: number, ex?: number, ey?: number, q?: number): XpAutoBitmap | null;
+/** 全屏截图并返回独立的 Android Bitmap。
+ * @xpauto
+ */
+    captureScreenBitmapEx(): XpAutoBitmap | null;
+/** 截取区域并保存为 PNG，内部自动回收临时图片；路径可为应用可写绝对路径，或相对于 getSaveDir 的路径。
+ * @xpauto
+ */
+    captureToFile(retryNumber: number, x: number, y: number, ex: number, ey: number, path: string): boolean;
+/** XpAuto 便利重载：截取全屏并保存 PNG。
+ * @xpauto
+ */
+    captureToFile(path: string): boolean;
+/** 使用 Root 执行系统 screencap，不依赖 MediaProjection；root 默认为 true，false 因无代理服务而失败。
+ * @xpauto
+ */
+    screencapImage(root?: boolean): XpAutoImage | null;
+/** Root 截图并返回 Bitmap，兼容 shell.addSuBin 自定义 su 路径。
+ * @xpauto
+ */
+    screencapBitmap(root?: boolean): XpAutoBitmap | null;
+/** 获取图片宽度，失败返回 0。
+ * @xpauto
+ */
+    getWidth(img: XpAutoImage | XpAutoBitmap): number;
+/** 获取图片高度，失败返回 0。
+ * @xpauto
+ */
+    getHeight(img: XpAutoImage | XpAutoBitmap): number;
+/** 读取手机图片，相对路径位于 getSaveDir 下。
+ * @xpauto
+ */
+    readImage(path: string): XpAutoImage | null;
+/** 读取手机图片为 Bitmap。
+ * @xpauto
+ */
+    readBitmap(path: string): XpAutoBitmap | null;
+/** 保存为 PNG；原文件存在时原子覆盖。
+ * @xpauto
+ */
+    saveTo(img: XpAutoImage | XpAutoBitmap, path: string): boolean;
+/** 编码保存图片；质量 1～100，PNG 忽略质量。
+ * @xpauto
+ */
+    saveBitmap(bitmap: XpAutoBitmap, format: 'png' | 'jpg' | 'jpeg' | 'webp', q: number, path: string): boolean;
+/** 图片编码为无换行 Base64，默认 PNG、质量 100。
+ * @xpauto
+ */
+    toBase64Format(img: XpAutoImage, format?: 'png' | 'jpg' | 'jpeg' | 'webp', q?: number): string | null;
+/** Bitmap 编码为无换行 Base64。
+ * @xpauto
+ */
+    bitmapBase64(bitmap: XpAutoBitmap, format?: 'png' | 'jpg' | 'jpeg' | 'webp', q?: number): string | null;
+/** 裁剪图片，ex/ey 是终点坐标，返回独立图片。
+ * @xpauto
+ */
+    clip(img: XpAutoImage, x: number, y: number, ex: number, ey: number): XpAutoImage | null;
+/** 裁剪 Bitmap，w/h 是宽高，返回独立图片。
+ * @xpauto
+ */
+    clipBitmap(bitmap: XpAutoBitmap, x: number, y: number, w: number, h: number): XpAutoBitmap | null;
+/** 转换并复制为 Bitmap，两份图片可独立回收。
+ * @xpauto
+ */
+    imageToBitmap(img: XpAutoImage): XpAutoBitmap | null;
+/** 转换并复制为图片对象，两份图片可独立回收。
+ * @xpauto
+ */
+    bitmapToImage(bitmap: XpAutoBitmap): XpAutoImage | null;
+/** 获取像素的有符号 32 位 ARGB 值。
+ * @xpauto
+ */
+    pixel(img: XpAutoImage | XpAutoBitmap, x: number, y: number): number;
+/** 获取图片像素的 ARGB 值。
+ * @xpauto
+ */
+    pixelInImage(img: XpAutoImage, x: number, y: number): number;
+/** 获取 Bitmap 像素的 ARGB 值。
+ * @xpauto
+ */
+    getPixelBitmap(bitmap: XpAutoBitmap, x: number, y: number): number;
+/** null 或已经回收的图片返回 true。
+ * @xpauto
+ */
+    isRecycled(img: XpAutoImage | XpAutoBitmap | null): boolean;
+/** 回收图片；可以重复调用。
+ * @xpauto
+ */
+    recycle(img: XpAutoImage | XpAutoBitmap | null): void;
+/** 回收本会话由 image 模块创建的全部图片。
+ * @xpauto
+ */
+    recycleAllImage(): boolean;
+/** 获取当前脚本线程最近一次图片操作的错误；成功操作清空错误。
+ * @xpauto
+ */
+    getErrorMsg(): string;
+/** XpAuto 扩展：图片相对路径的基准目录，位于应用私有 files/images 中。
+ * @xpauto
+ */
+    getSaveDir(): string;
+}
+/** 截图与图片存取接口，普通截图需要先申请系统屏幕共享。
+ * @xpauto
+ */
+declare const image: XpAutoImageApi;

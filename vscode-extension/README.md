@@ -56,3 +56,15 @@
 ## 0.4.1：选择器日志
 
 `print(text("搜索"))` 和四级日志显示完整条件链，字符串拼接与嵌套 JSON 同步支持；增加 `toString/toJSON` 中文提示。打印只描述条件，不触发节点查询。手机端需要更新一次原生实现，后续 F5 仍只同步脚本。
+
+## 0.4.2：当前应用信息
+
+新增 `getCurrentRunningPkg()` 和 `getRunningActivity()` 的中文补全与返回值说明。包名无结果为 `""`，Activity 无可靠记录为 `null`；手机端通过无障碍窗口和经过校验的窗口事件获取，不要求 Root。
+
+0.5.0 补齐线程、定时器、utils、encodeDecoder、sqlite、多点触摸、拖拽、输入法、节点控制和权限函数的中文补全、悬停说明与参数提示。对应手机端需安装包含这些原生 API 的新版 APK；F5 不触发 APK 编译或安装。
+
+### 截图与图片（0.6.0）
+
+同时增加全局 `getprop`、`setprop` 的补全、中文说明及参数提示；系统属性用法见仓库 `docs/system-properties-api.md`，只读示例位于 `examples/system-properties/main.js`。
+
+新增 `image` 的中文代码提示：系统截图授权、全屏/区域截图、Bitmap、文件保存、Base64、像素读取、裁剪和内存回收。返回对象可以继续补全 `getWidth/getHeight/isRecycled/recycle`。用法与兼容边界见 工程内 `docs/image-api.md`，示例见 工程内 `examples/screenshot/main.js`。需要更新一次手机 APK；日常 F5 继续只同步 JS。

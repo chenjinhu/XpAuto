@@ -103,6 +103,8 @@ public class UiObject implements IUiObject {
         args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, end);
         return action(AccessibilityNodeInfo.ACTION_SET_SELECTION, args);
     }
+    public boolean setFocus() { return action(AccessibilityNodeInfo.ACTION_FOCUS); }
+    public boolean hasAction(int id) { return node != null && node.getActionList().stream().anyMatch(action -> action.getId() == id); }
     public boolean copy() { return action(AccessibilityNodeInfo.ACTION_COPY); }
     public boolean cut() { return action(AccessibilityNodeInfo.ACTION_CUT); }
     public boolean paste() { return action(AccessibilityNodeInfo.ACTION_PASTE); }
@@ -228,7 +230,7 @@ public class UiObject implements IUiObject {
     public Map<String, Object> info() {
         if (node == null) return null;
         Map<String, Object> result = new NodeAttributes(node, depth(), index()).all();
-        result.put("bounds", rectangle(bounds())); result.put("visibleBounds", rectangle(visibleBounds()));
+        if (!NodeSettings.blocked.contains("bounds")) { result.put("bounds", rectangle(bounds())); result.put("visibleBounds", rectangle(visibleBounds())); }
         return result;
     }
     public Map<String, Object> toJSON() { return info(); }

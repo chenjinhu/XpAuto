@@ -60,17 +60,35 @@ public final class NodeQuery {
                 List<UiObject> found = query.search(scope);
                 if (!found.isEmpty() || timeout == 0 || System.nanoTime() >= end) return found;
                 long remaining = Math.min(50, Math.max(1, (end - System.nanoTime()) / 1000000L));
-                try { Thread.sleep(remaining); }
-                catch (InterruptedException error) { Thread.currentThread().interrupt(); throw new CancellationException("节点等待已中断"); }
+                com.vixmobi.auto.runtime.ScriptBlocking.sleep(remaining);
             } while (true);
         } finally { EXECUTING.decrementAndGet(); }
     }
     private List<UiObject> search(UiObject scope) {
         boolean xpath = selector.stages.stream().anyMatch(stage -> stage.xpath != null);
+        boolean snapshotMode = xpath || NodeSettings.algorithm.equals("bsf") || NodeSettings.algorithm.equals("nsf");
         try {
+            if (NodeSettings.locked != null) {
+                Map<Integer, Entry> parents = new HashMap<>();
+                int window = Integer.MIN_VALUE;
+                boolean inside = scope == null;
+                int scopeDepth = -1;
+                for (UiObject saved : NodeSettings.locked) {
+                    if (scope != null) {
+                        if (!inside) {
+                            if (scope.node == null || !saved.node.equals(scope.node)) continue;
+                            inside = true; scopeDepth = saved.depth();
+                        } else if (saved.depth() <= scopeDepth) break;
+                    }
+                    if (saved.node.getWindowId() != window) { parents.clear(); window = saved.node.getWindowId(); }
+                    Entry entry = new Entry(AccessibilityNodeInfo.obtain(saved.node), parents.get(saved.depth()-1), saved.depth(), saved.index(), selector.stages.size());
+                    parents.put(entry.depth, entry); snapshot.add(entry);
+                }
+                return filterSnapshot(xpath, scope != null);
+            }
             if (scope != null) {
                 if (scope.node == null || !scope.node.refresh()) return result;
-                read(AccessibilityNodeInfo.obtain(scope.node), null, scope.depth(), scope.index(), xpath, true);
+                read(AccessibilityNodeInfo.obtain(scope.node), null, scope.depth(), scope.index(), snapshotMode, true);
             } else {
                 AccessibilityService service = AccUtils.AccessibilityHelper;
                 if (service == null) throw new IllegalStateException("查询节点前请开启 XpAuto 无障碍服务");
@@ -84,16 +102,17 @@ public final class NodeQuery {
                         AccessibilityNodeInfo root = window.getRoot();
                         if (root == null) continue;
                         hasRoot = true;
-                        if (read(root, null, 0, 0, xpath, false)) break;
+                        if (read(root, null, 0, 0, snapshotMode, false)) break;
                     }
                     if (!hasRoot) {
                         AccessibilityNodeInfo root = service.getRootInActiveWindow();
-                        if (root != null) read(root, null, 0, 0, xpath, false);
+                        if (root != null) read(root, null, 0, 0, snapshotMode, false);
                     }
                 } finally { for (AccessibilityWindowInfo window : windows) window.recycle(); }
             }
-            if (xpath) {
-                buildXPath();
+            if (snapshotMode) {
+                if (xpath) buildXPath();
+                if (NodeSettings.algorithm.equals("bsf")) snapshot.sort(java.util.Comparator.comparingInt(entry -> entry.depth));
                 for (Entry entry : snapshot) {
                     checkCancelled();
                     if (scope != null && entry.parent == null) continue;
@@ -109,10 +128,26 @@ public final class NodeQuery {
             for (Entry entry : snapshot) entry.node.recycle();
         }
     }
+    private List<UiObject> filterSnapshot(boolean xpath, boolean skipRoot) {
+        if (xpath) buildXPath();
+        if (NodeSettings.algorithm.equals("bsf")) snapshot.sort(java.util.Comparator.comparingInt(entry -> entry.depth));
+        for (Entry entry : snapshot) {
+            checkCancelled();
+            if (skipRoot && entry.parent == null) continue;
+            if (entry.depth <= NodeSettings.maxDepth && matches(entry)) { result.add(copy(entry)); if (firstOnly) break; }
+        }
+        return result;
+    }
     private boolean read(AccessibilityNodeInfo node, Entry parent, int depth, int index, boolean snapshotMode, boolean skipSelf) {
+        if (NodeSettings.algorithm.equals("nsf") && NodeSettings.dumpMethod != 1) {
+            readIterative(node, parent, depth, index);
+            return false;
+        }
         boolean retained = false;
         try {
             checkCancelled();
+            if (depth > NodeSettings.maxDepth) return false;
+            if (NodeSettings.mode == 1) node.refresh();
             if (++visited > 5000 || depth > 80 || System.nanoTime() > deadline)
                 throw new IllegalStateException("节点树超过查询上限（5000 节点、80 层或单轮 4 秒），请缩小查询范围");
             Entry entry = new Entry(node, parent, depth, index, selector.stages.size());
@@ -128,6 +163,27 @@ public final class NodeQuery {
             return false;
         } finally { if (!retained) node.recycle(); }
     }
+    /** 静态模式可选显式栈/队列，避免依赖 Java 调用栈。 */
+    private void readIterative(AccessibilityNodeInfo root, Entry parent, int depth, int index) {
+        java.util.ArrayDeque<Entry> pending = new java.util.ArrayDeque<>();
+        pending.add(new Entry(root, parent, depth, index, selector.stages.size()));
+        try {
+            while (!pending.isEmpty()) {
+                Entry entry = NodeSettings.dumpMethod == 2 ? pending.removeLast() : pending.removeFirst();
+                snapshot.add(entry);
+                checkCancelled();
+                if (++visited > 5000 || System.nanoTime() > deadline) throw new IllegalStateException("节点树超过查询上限");
+                if (NodeSettings.mode == 1) entry.node.refresh();
+                if (entry.depth >= NodeSettings.maxDepth) continue;
+                int count = entry.node.getChildCount();
+                for (int n = 0; n < count; n++) {
+                    int childIndex = NodeSettings.dumpMethod == 2 ? count - n - 1 : n;
+                    AccessibilityNodeInfo child = entry.node.getChild(childIndex);
+                    if (child != null) pending.addLast(new Entry(child, entry, entry.depth + 1, childIndex, selector.stages.size()));
+                }
+            }
+        } finally { for (Entry entry : pending) entry.node.recycle(); }
+    }
     private boolean matches(Entry entry) {
         for (int i = 0; i < selector.stages.size(); i++) {
             UiSelector.Stage stage = selector.stages.get(i);
@@ -142,7 +198,9 @@ public final class NodeQuery {
             }
             entry.matched[i] = matched;
         }
-        return entry.matched[entry.matched.length - 1];
+        return entry.matched[entry.matched.length - 1]
+                && (NodeSettings.invisible || entry.node.isVisibleToUser())
+                && (NodeSettings.notImportant || entry.node.isImportantForAccessibility());
     }
     private UiObject copy(Entry entry) { return new UiObject(AccessibilityNodeInfo.obtain(entry.node), entry.depth, entry.index); }
 

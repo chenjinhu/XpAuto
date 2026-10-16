@@ -16,6 +16,12 @@
 - 交流/提建议/定制化需求 加微信:cjh-18888
 
 
+## 截图与图片
+
+支持 `image.requestScreenCapture()` 授权、全屏/区域截图、Bitmap、PNG/JPEG/WebP 保存、Base64、像素读取和图片回收。接口及权限边界见 [截图 API](docs/image-api.md)，可运行示例见 [截图示例](examples/screenshot/main.js)。
+
+全局 `getprop()`、`setprop()` 支持读取和写入 Android 系统属性，复用 Shell 的自定义 su、超时和取消机制。用法见 [系统属性 API](docs/system-properties-api.md)。
+
 ## 文档
 
 开发者请先阅读 **[开发说明](docs/development.md)**：包含中文注释约定、代码职责、悬浮窗与抽屉实现、暂停/继续状态、Shell 内部结构和验证方法。
@@ -25,6 +31,10 @@
 ### 节点选择器
 
 支持精确/模糊/正则匹配、状态与层级、列表行列、级联、XPath、可取消等待和节点操作。详见 **[节点选择器 API](docs/selector-node-api.md)** 与 **[选择器示例](examples/selectors/main.js)**。0.4.0 的超时、精确匹配和空结果语义调整请阅读文档兼容说明。
+
+### 当前应用信息
+
+`getCurrentRunningPkg()` 获取前台应用包名，`getRunningActivity()` 获取当前窗口的 Activity 完整类名；需要无障碍服务，不需要 Root。空值规则、页面切换与实现说明见 **[当前应用与 Activity API](docs/running-app-api.md)**，示例见 **[应用信息示例](examples/running-app/main.js)**。
 
 ### 日志与提示
 
@@ -46,7 +56,7 @@
 
 ### XpAuto 手机端与 VS Code 插件
 
-插件 0.4.1 提供 **JavaScript 代码提示、UI 节点抓取与分析、节点属性复制和代码生成**。在 XpAuto 侧栏点击节点树图标即可打开截图、节点树与属性联动面板，支持快照保存/载入、XPath 测试及六种右键复制操作。新增历史搜索、单 Tab 模式和 ARGB/HEX 像素颜色。用法与开发结构见 **[节点分析与代码提示文档](docs/ui-inspector.md)**。
+插件 0.6.0 提供 **JavaScript 代码提示、UI 节点抓取与分析、节点属性复制和代码生成**。在 XpAuto 侧栏点击节点树图标即可打开截图、节点树与属性联动面板，支持快照保存/载入、XPath 测试及六种右键复制操作。新增历史搜索、单 Tab 模式和 ARGB/HEX 像素颜色。用法与开发结构见 **[节点分析与代码提示文档](docs/ui-inspector.md)**。
 
 手机主界面提供权限状态、运行环境开关、最近同步脚本和运行控制台。打开应用或从授权页返回时，只要已有悬浮窗权限，就自动开启运行环境并显示悬浮球，无需再次点击启动。无障碍权限不影响悬浮球显示，但运行脚本前仍会检查必要权限。通知权限用于显示前台运行状态，拒绝通知不影响脚本执行。脚本保存在应用私有目录，不要求全盘存储权限。
 
@@ -69,7 +79,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```sh
 npm --prefix vscode-extension ci
 npm --prefix vscode-extension run package
-code --install-extension vscode-extension/xpauto-0.4.1.vsix --force
+code --install-extension vscode-extension/xpauto-0.6.0.vsix --force
 ```
 
 1. 手机打开 **XpAuto**，授予悬浮窗权限后自动显示悬浮球；运行脚本前开启无障碍服务。
@@ -226,3 +236,5 @@ main();
 - https://ieasyclick.com/ (参考API设计)
 - https://github.com/caoccao/Javet (V8引擎)
 - https://github.com/kkevsekk1/AutoX (功能实现)
+
+新增脚本模块：线程/定时器、工具与二维码、SQLite、点击/多点触摸/拖拽、输入法、节点快照和动态权限。参见 [线程](docs/thread-api.md)、[工具](docs/utils-api.md)、[数据库](docs/sqlite-api.md)、[快捷操作](docs/global-shortcut-api.md)；示例：`examples/script-modules/main.js`。

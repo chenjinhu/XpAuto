@@ -43,6 +43,11 @@ public class TaskBase extends UiSelector implements ITaskBase{
     /** 全局选择器入口不能复用 TaskBase 自身的条件。 */
     public UiSelector newSelector() { return new UiSelector(); }
 
+    /** 获取前台应用窗口的包名；无结果返回空字符串。 */
+    public String _getCurrentRunningPkg() { return RunningAppInfo.getCurrentRunningPkg(); }
+    /** 获取当前窗口的 Activity 完整类名；无可靠结果返回 null。 */
+    public String _getRunningActivity() { return RunningAppInfo.getRunningActivity(); }
+
     private static String base;
     // ----------------  全局快捷事件
     // ---- 选择器
@@ -284,7 +289,7 @@ public class TaskBase extends UiSelector implements ITaskBase{
 
     // ----------------    时间
     public void _sleep(int time) {
-        timeSleep(time);
+        com.vixmobi.auto.runtime.ScriptBlocking.sleep(time);
     }
 
 
@@ -298,6 +303,7 @@ public class TaskBase extends UiSelector implements ITaskBase{
         com.vixmobi.auto.logging.ScriptLogApi scriptLog = new com.vixmobi.auto.logging.ScriptLogApi(
                 com.vixmobi.auto.Constant.context, (level, message) -> printLogMsg(message),
                 com.vixmobi.auto.devtools.DeveloperService::clearLogs, () -> killThread);
+        com.vixmobi.auto.runtime.ScriptModules modules = new com.vixmobi.auto.runtime.ScriptModules(com.vixmobi.auto.Constant.context, shell, message -> printLogMsg(message));
         boolean success = false;
         // V8 解析核心
         try {
@@ -321,25 +327,22 @@ public class TaskBase extends UiSelector implements ITaskBase{
             // 设置全局变量 http
             v8Runtime.getGlobalObject().set("__xpautoHttp", http);
             v8Runtime.getGlobalObject().set("__xpautoLog", scriptLog);
-            v8Runtime.getExecutor(loadScriptFromAssets("logging.js")).executeVoid();
-            v8Runtime.getExecutor(loadScriptFromAssets("http.js")).executeVoid();
-            // 工具类
-            v8Runtime.getGlobalObject().set("utils", Utils.class);
+            modules.install(v8Runtime);
             // 文件类
             v8Runtime.getGlobalObject().set("file", FileUtils.class);
 
             v8Runtime.getGlobalObject().set("shell", shell);
             v8Runtime.getGlobalObject().set("floaty", floaty);
-            // 判断脚本是否包含 task 变量
-            if (!script.contains("let task = new engines()")) {
-                script = base + "\n" + script;
+            for (String asset : com.vixmobi.auto.runtime.ScriptModules.ASSETS) {
+                v8Runtime.getExecutor(loadScriptFromAssets(asset)).setResourceName("xpauto://sdk/" + asset).executeVoid();
             }
-            v8Runtime.getExecutor(script).executeVoid();
+            v8Runtime.getExecutor(script).setResourceName(script_path).executeVoid();
             success = true;
         } catch (Exception e) {
             killThread = false;
             printLogMsg(e.toString());
         } finally {
+            if (v8Runtime != null) modules.finish(v8Runtime);
             scriptLog.finish(success && !killThread);
             scriptLog.stop(true);
             shell.close();

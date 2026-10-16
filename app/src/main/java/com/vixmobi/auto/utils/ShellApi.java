@@ -107,6 +107,35 @@ public final class ShellApi implements AutoCloseable {
     public String ROOT(String command) { return sudo(command); }
     public String ROOT(String command, long timeoutMs) { return sudo(command, timeoutMs); }
 
+    /** 全局 getprop 的原生入口；只删除命令附加的一个换行，保留属性值中的空格。 */
+    public String getprop(String name, String defaultValue, boolean root, long timeoutMs) {
+        if (!validPropertyName(name)) return defaultValue;
+        String executable = android ? "/system/bin/getprop" : "getprop";
+        AbstractShell.Result result = execute(executable + " " + quote(name), root, timeoutMs);
+        if (!ok(result) || result.truncated) return defaultValue;
+        String value = result.result;
+        if (value.endsWith("\n")) value = value.substring(0, value.length() - 1);
+        return value.isEmpty() ? defaultValue : value;
+    }
+
+    /** 全局 setprop 的原生入口；复用当前 su 配置，并按本次命令结果判断成功。 */
+    public boolean setprop(String name, String value, boolean root, long timeoutMs) {
+        if (!validPropertyName(name)) return false;
+        if (value == null || value.indexOf('\0') >= 0) {
+            fail("属性值不能为 null 或包含 NUL 字符");
+            return false;
+        }
+        String executable = android ? "/system/bin/setprop" : "setprop";
+        // 属性值始终作为单个参数传入，引号、分号和命令替换符号不会被执行。
+        return ok(execute(executable + " " + quote(name) + " " + quote(value), root, timeoutMs));
+    }
+
+    private boolean validPropertyName(String name) {
+        if (name != null && name.matches("[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*")) return true;
+        fail("属性名只能包含字母、数字、下划线、连字符及分隔用的单个点");
+        return false;
+    }
+
     public boolean installApp(String path) {
         if (!validText(path) || !path.startsWith("/")) {
             fail("installApp requires an absolute APK path on the phone");

@@ -69,9 +69,17 @@ exports.run = async function run() {
         const networkCompletion = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', networkHints.uri, networkHints.positionAt(networkHints.getText().length));
         assert.ok(networkCompletion.items.some(item => (item.label.label || item.label) === 'startHeartBeat'));
         console.log('PASS real VS Code: SDK completions including HTTP/WebSocket, inferred node variable, Chinese hover and signature help');
+        for (const [source, expected] of [['getp', 'getprop'], ['setp', 'setprop'], ['image.', 'requestScreenCapture']]) {
+            const doc = await vscode.workspace.openTextDocument({ language: 'javascript', content: source });
+            const items = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', doc.uri, new vscode.Position(0, source.length));
+            assert.ok(items.items.some(item => (item.label.label || item.label) === expected));
+        }
         const logHints = await vscode.workspace.openTextDocument({ language: 'javascript', content: 'log' });
         const logCompletion = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', logHints.uri, new vscode.Position(0,3));
         for (const name of ['logd','logi','logw','loge']) assert.ok(logCompletion.items.some(item => (item.label.label || item.label) === name));
+        const runningHints = await vscode.workspace.openTextDocument({ language: 'javascript', content: 'get' });
+        const runningCompletion = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', runningHints.uri, new vscode.Position(0,3));
+        for (const name of ['getCurrentRunningPkg', 'getRunningActivity']) assert.ok(runningCompletion.items.some(item => (item.label.label || item.label) === name));
         const toastHints = await vscode.workspace.openTextDocument({ language: 'javascript', content: 'toast("完成", {' });
         const toastCompletion = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', toastHints.uri, toastHints.positionAt(toastHints.getText().length));
         assert.ok(toastCompletion.items.some(item => (item.label.label || item.label) === 'duration'));
@@ -121,6 +129,11 @@ exports.run = async function run() {
         assert.equal(floatyPreview.result, 'true');
         assert.equal(api.getState().state, 'paused');
         console.log('PASS real VS Code: floaty completion and main-thread view updates while paused at a breakpoint');
+        const propertyPreview = await session.customRequest('evaluate', { frameId: frame.id, context: 'repl',
+            expression: 'getprop("ro.product.model").length > 0 && typeof setprop === "function" && typeof image.requestScreenCapture === "function"' });
+        assert.equal(propertyPreview.result, 'true');
+        assert.equal(api.getState().state, 'paused');
+        console.log('PASS real VS Code: screenshot/property completions and getprop in paused console');
         assert.equal(frame.source.path, sample);
         assert.equal(frame.line, 8);
         assert.equal(frame.name, 'calculateTotal');
