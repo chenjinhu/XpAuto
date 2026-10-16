@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "XpAuto: 构建 Android 应用（仅更新原生代码时）",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": [":app:assembleDebug", "--console=plain"],
+            "windows": { "command": ".\\gradlew.bat" },
+            "problemMatcher": []
+        }
+    ]
+}

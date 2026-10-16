@@ -136,6 +136,11 @@
                 android:layout_height="wrap_content" />
         </TableRow>
 
+        <TableRow android:layout_marginTop="20dp">
+            <Button android:id="@+id/developer_tools"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_span="3" android:text="VS Code 开发者调试" />
+        </TableRow>
     </TableLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

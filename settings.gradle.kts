@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "xianyu"
+rootProject.name = "XpAuto"
 include(":app")

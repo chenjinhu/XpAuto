@@ -1,0 +1,9 @@
+<resources>
+    <item name="selector_group" type="id" />
+    <item name="selector_exact" type="id" />
+    <item name="selector_longer" type="id" />
+    <item name="selector_check" type="id" />
+    <item name="selector_input" type="id" />
+    <item name="selector_status" type="id" />
+    <item name="selector_scroll" type="id" />
+</resources>

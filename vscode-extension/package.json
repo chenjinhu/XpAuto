@@ -1,0 +1,225 @@
+{
+  "name": "xpauto",
+  "displayName": "XpAuto",
+  "description": "连接 Android，调试 JavaScript、提供代码提示、抓取 UI 节点与生成选择器代码。",
+  "version": "0.4.1",
+  "publisher": "xpauto",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages",
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onDebug:xpauto",
+    "onView:xpauto.device",
+    "onLanguage:javascript"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "xpauto.connect",
+        "title": "XpAuto: 连接设备",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "xpauto.disconnect",
+        "title": "XpAuto: 断开设备"
+      },
+      {
+        "command": "xpauto.run",
+        "title": "XpAuto: 运行当前脚本",
+        "icon": "$(play)"
+      },
+      {
+        "command": "xpauto.debug",
+        "title": "XpAuto: 调试当前脚本",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "xpauto.stop",
+        "title": "XpAuto: 停止脚本",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "xpauto.console",
+        "title": "XpAuto: 打开调试控制台",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "xpauto.logs",
+        "title": "XpAuto: 查看运行日志"
+      },
+      {
+        "command": "xpauto.inspect",
+        "title": "XpAuto: UI 节点抓取与分析",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "xpauto.captureUi",
+        "title": "XpAuto: 获取 UI 节点与截图"
+      },
+      {
+        "command": "xpauto.loadUi",
+        "title": "XpAuto: 载入节点快照"
+      },
+      {
+        "command": "xpauto.saveUi",
+        "title": "XpAuto: 保存节点快照"
+      }
+    ],
+    "configuration": {
+      "title": "XpAuto",
+      "properties": {
+        "xpauto.adbPath": {
+          "type": "string",
+          "default": "adb",
+          "description": "ADB 可执行文件路径。"
+        },
+        "xpauto.devicePort": {
+          "type": "number",
+          "default": 9229,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "手机开发服务端口。"
+        }
+      }
+    },
+    "debuggers": [
+      {
+        "type": "xpauto",
+        "label": "XpAuto Android JavaScript",
+        "languages": [
+          "javascript"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "上传到手机执行的 JS 文件。",
+                "default": "${file}"
+              },
+              "device": {
+                "type": "string",
+                "description": "可选的 ADB 设备序列号。"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false,
+                "description": "进入脚本时暂停。"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "xpauto",
+            "request": "launch",
+            "name": "XpAuto: 调试当前脚本",
+            "program": "${file}",
+            "internalConsoleOptions": "openOnSessionStart"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "XpAuto: 调试当前脚本",
+            "body": {
+              "type": "xpauto",
+              "request": "launch",
+              "name": "XpAuto: 调试当前脚本",
+              "program": "${file}"
+            }
+          }
+        ]
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "javascript"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "xpauto",
+          "title": "XpAuto",
+          "icon": "resources/xpauto.svg"
+        }
+      ]
+    },
+    "views": {
+      "xpauto": [
+        {
+          "id": "xpauto.device",
+          "name": "设备与运行状态"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "xpauto.device",
+        "contents": "手机开启开发服务并通过 USB 连接。\n[连接设备](command:xpauto.connect)\n[UI 节点抓取与分析](command:xpauto.inspect)",
+        "when": "!xpauto.connected"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "xpauto.connect",
+          "when": "view == xpauto.device",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xpauto.run",
+          "when": "view == xpauto.device && xpauto.connected",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xpauto.debug",
+          "when": "view == xpauto.device && xpauto.connected",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xpauto.stop",
+          "when": "view == xpauto.device && xpauto.connected",
+          "group": "navigation@4"
+        },
+        {
+          "command": "xpauto.console",
+          "when": "view == xpauto.device",
+          "group": "navigation@5"
+        },
+        {
+          "command": "xpauto.inspect",
+          "when": "view == xpauto.device",
+          "group": "navigation@6"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "package": "vsce package --allow-missing-repository --out xpauto-0.4.1.vsix"
+  },
+  "dependencies": {
+    "typescript": "5.9.3",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "3.6.2"
+  }
+}

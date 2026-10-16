@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "XpAuto: 调试当前脚本",
+            "type": "xpauto",
+            "request": "launch",
+            "program": "${file}",
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "XpAuto: 调试示例",
+            "type": "xpauto",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/inspector-probe/main.js",
+            "internalConsoleOptions": "openOnSessionStart"
+        }
+    ]
+}

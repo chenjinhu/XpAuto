@@ -5,7 +5,7 @@ function main() {
     sleep(500);
     swipe(500,1500,500,300,500);
     sleep(500);
-   var selector = textMatch(".*浏览器.*")
+   var selector = textMatch(".*Play.*")
     var result = click(selector);
     if (!result) {
         print("点击失败");
@@ -16,9 +16,12 @@ function main() {
     sleep(1000)
     click(searchBoxSel);
     sleep(3000);
-    var searchBoxSel = idMatch(".*search_box.*").getOneNodeInfo();
-    searchBoxSel.setText("http://blog.androidcrack.com");
-    enter();
+    var search = text("搜索");
+    print(search)
+    if(!search){
+        click(search)
+    }
+
 
 }
 

@@ -21,12 +21,16 @@
 
     <!-- 悬浮窗 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INJECT_EVENTS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- 脚本可访问用户指定的 HTTP/WS 地址；HTTPS/WSS 仍使用系统证书校验。 -->
     <application
+        android:usesCleartextTraffic="true"
         tools:replace="android:allowBackup"
         android:name=".WrapperApplication"
         android:allowBackup="true"
@@ -36,7 +40,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Xianyu"
+        android:theme="@style/Theme.XpAuto"
         android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
         <meta-data
@@ -52,19 +56,25 @@
 <!--                android:resource="@xml/provider_paths"/>-->
 <!--        </provider>-->
         <!-- 前台服务 -->
+        <activity android:name="com.vixmobi.auto.devtools.DeveloperActivity"
+            android:exported="true" android:label="XpAuto">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <service android:name="com.vixmobi.auto.devtools.DeveloperService"
+            android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled USB JavaScript development, interactive debugging and script execution" />
+        </service>
         <service
             android:name=".service.MyService"
             android:enabled="true"
             android:exported="true" />
         <activity
             android:name=".activitys.MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
         <activity android:name=".activitys.EditorActivity"
             android:exported="true">
             <intent-filter>
