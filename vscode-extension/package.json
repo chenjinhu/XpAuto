@@ -2,7 +2,7 @@
   "name": "xpauto",
   "displayName": "XpAuto",
   "description": "连接 Android，调试 JavaScript、提供代码提示、抓取 UI 节点与生成选择器代码。",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "publisher": "xpauto",
   "license": "UNLICENSED",
   "engines": {
@@ -121,6 +121,27 @@
                 "type": "boolean",
                 "default": false,
                 "description": "进入脚本时暂停。"
+              },
+              "projectRoot": {
+                "type": "string",
+                "description": "项目根目录，默认入口所在目录。同步该目录的 JS/CJS/JSON 源码。"
+              },
+              "resources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "额外同步的文件或目录，相对于 projectRoot；支持资源和纯 JS 的 node_modules 包。"
+              },
+              "nodeMode": {
+                "type": "string",
+                "enum": [
+                  "xpauto",
+                  "easyclick"
+                ],
+                "default": "xpauto",
+                "description": "节点使用方法或 EasyClick 属性兼容模式。"
               }
             }
           }
@@ -213,7 +234,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "package": "vsce package --allow-missing-repository --out xpauto-0.6.0.vsix"
+    "package": "vsce package --allow-missing-repository --out xpauto-0.9.0.vsix"
   },
   "dependencies": {
     "typescript": "5.9.3",

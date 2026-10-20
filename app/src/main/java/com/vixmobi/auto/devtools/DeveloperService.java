@@ -27,6 +27,28 @@ public final class DeveloperService extends Service {
     private DeveloperServer server;
     private FloatingControls overlay;
     private FloatingLogWindow logWindow;
+    private static DeveloperService instance; // 只在主线程读写。
+    private final org.json.JSONObject logOptions = new org.json.JSONObject();
+
+    /** 由 BuiltinFloatApi 切到主线程后调用；未开启服务时明确返回 false。 */
+    public static boolean floatingCommand(String action, String json) throws Exception {
+        DeveloperService service = instance;
+        if (service == null || !enabled || !AutomationPermissions.overlay(service)) return false;
+        org.json.JSONObject options = new org.json.JSONObject(json);
+        switch (action) {
+            case "showLog": if (service.logWindow == null) service.toggleLogs(); return service.logWindow != null;
+            case "hideLog": service.closeLogs(); return true;
+            case "showCtrl": service.overlay.setVisible(true); return true;
+            case "hideCtrl": service.overlay.setVisible(false); return true;
+            case "configureCtrl": service.overlay.configure(options); return true;
+            case "configureLog":
+                java.util.Iterator<String> keys = options.keys();
+                while (keys.hasNext()) { String key = keys.next(); service.logOptions.put(key, options.get(key)); }
+                if (service.logWindow != null) service.logWindow.configure(service.logOptions);
+                return true;
+            default: throw new IllegalArgumentException("未知悬浮窗操作：" + action);
+        }
+    }
     // 会话释放可能晚于完成通知；轻量检查保证“运行”按钮在会话释放后及时恢复。
     private final Runnable refreshControls = new Runnable() {
         @Override public void run() {
@@ -53,6 +75,7 @@ public final class DeveloperService extends Service {
         if (logWindow != null) { closeLogs(); return; }
         try {
             logWindow = new FloatingLogWindow(this, logs::clear, this::closeLogs);
+            logWindow.configure(logOptions);
             logWindow.update(consoleText());
             if (overlay != null) overlay.setLogsVisible(true);
             // 退出当前按钮的触摸分发后再调整层级，让悬浮球始终位于日志窗口上方。
@@ -90,6 +113,7 @@ public final class DeveloperService extends Service {
         server.start();
         try {
             overlay = new FloatingControls(this, this::action);
+            instance = this;
             handler.post(refreshControls);
         } catch (RuntimeException error) {
             appendLog("悬浮窗无法显示，请检查权限：" + error.getMessage());
@@ -130,6 +154,7 @@ public final class DeveloperService extends Service {
     }
     @Override public IBinder onBind(Intent intent) { return null; }
     @Override public void onDestroy() {
+        if (instance == this) instance = null;
         com.vixmobi.auto.logging.ToastPresenter.cancelAll();
         enabled = false;
         status = "运行环境已关闭";

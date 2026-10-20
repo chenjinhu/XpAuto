@@ -1,7 +1,7 @@
 //-------------------- pre set -------------------//
-let task = new engines();
+const __xpautoTask = new engines();
 const getHashMapBuffer = () => {
-    let buffer = task._getHashMapBuffer();
+    let buffer = __xpautoTask._getHashMapBuffer();
     if(buffer != null) {
         return buffer;
     }
@@ -9,7 +9,7 @@ const getHashMapBuffer = () => {
 }
 // -------------------- 全局快捷事件-------------------//
 // 每个入口创建自己的选择器，避免多个变量的筛选条件互相影响。
-const selector = () => task.newSelector();
+const selector = () => __xpautoNodeCompat.wrap(__xpautoTask.newSelector());
 const text = value => selector().text(value);
 const textContains = value => selector().textContains(value);
 const textStartsWith = value => selector().textStartsWith(value);
@@ -65,7 +65,7 @@ const boundsContains = (left, top, right, bottom) => selector().boundsContains(l
 const boundsInScreen = () => selector().boundsInScreen();
 
 //  ---- 点击事件 ----//
-const click = (node) => task._clickNode(node);
+const click = (node) => __xpautoTask._clickNode(__xpautoUnwrapNode(node));
 const clickPoint = (x, y) => __xpautoGesture.press(x, y, 80);
 //  ---- 滑动事件 ----//
 const swipe = (...args) => args.length === 4 ? __xpautoMoveNode(args[0],args[1],args[2],args[3],false) : swipeToPoint(...args);
@@ -73,20 +73,20 @@ const swipe = (...args) => args.length === 4 ? __xpautoMoveNode(args[0],args[1],
 // -------------------- 日志输出类 -------------------//
 // 旧脚本继续可用，新代码统一使用 logd/logi/logw/loge。
 const print = logd;
-const showLog = () => task._showLog();
-const hideLog = () => task._hideLog();
-const fullScreenLog = () => task._fullScreenLog();
+const showLog = () => showLogWindow();
+const hideLog = () => closeLogWindow();
+const fullScreenLog = () => __xpautoTask._fullScreenLog();
 // -------------------- 按键模拟 -------------------// 参考autojs
-const back = () => task._back();
-const home = () => task._home();
-const power = () => task._power();
-const menu = () => task._menu();
-const openNotification = () => task._openNotification();
-const openQuickSettings = () => task._openQuickSettings();
-const recentApps       = () => task._recentApps();
+const back = () => __xpautoTask._back();
+const home = () => __xpautoTask._home();
+const power = () => __xpautoTask._power();
+const menu = () => __xpautoTask._menu();
+const openNotification = () => __xpautoTask._openNotification();
+const openQuickSettings = () => __xpautoTask._openQuickSettings();
+const recentApps       = () => __xpautoTask._recentApps();
 // 包名读取应用窗口，Activity 使用经过校验的窗口事件；都不要求 Root。
-const getCurrentRunningPkg = () => task._getCurrentRunningPkg();
-const getRunningActivity = () => task._getRunningActivity();
+const getCurrentRunningPkg = () => __xpautoTask._getCurrentRunningPkg();
+const getRunningActivity = () => __xpautoTask._getRunningActivity();
 // -------------------- 时间类 -------------------//
 const sleep = (ms) => __xpautoNetworkSleep(ms);
 

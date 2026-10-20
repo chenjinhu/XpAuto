@@ -180,3 +180,7 @@ XPAUTO_ADB=/path/to/adb node scripts/verify-vscode-debug.mjs
 ```
 
 新增原生能力需要更新一次 APK；日常 F5 仍只连接设备和同步脚本。
+
+## EasyClick 属性模式
+
+默认节点使用 `text()` 等方法；插件 `nodeMode: "easyclick"` 或脚本 `setNodeCompatibility("easyclick")` 可启用 `node.text`、`node.clickable` 等真实属性。混合使用和代码提示可通过 `asEasyClick(node)` 显式转换。完整范围见 [EasyClick 节点对象兼容](project-api.md#easyclick-节点对象兼容)。

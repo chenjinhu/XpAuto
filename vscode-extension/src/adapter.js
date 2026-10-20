@@ -5,6 +5,7 @@ const path = require('node:path');
 const { pathToFileURL, fileURLToPath } = require('node:url');
 const { ProtocolClient } = require('./protocol');
 const { remoteText } = require('./device');
+const { collectProject } = require('./project');
 
 // One DAP session and one device runtime. Script execution starts only after
 // configurationDone, once every source breakpoint has been installed in V8.
@@ -68,7 +69,9 @@ class XpAutoDebugAdapter {
                 this.sourceUrl = pathToFileURL(this.program).href;
                 this.source = await readFile(this.program, 'utf8');
                 if (Buffer.byteLength(this.source) > 16 * 1024 * 1024) throw new Error('脚本超过 16 MB，无法同步。');
+                this.project = await collectProject(this.program, this.source, args);
                 await this.manager.connect(args.device);
+                if (!this.manager.capabilities?.includes('projectModules')) throw new Error('手机版本尚不支持项目同步，请先更新一次 XpAuto APK。');
                 this.client = new ProtocolClient(`${this.manager.endpoint}/debug`);
                 this.client.on('notification', (method, params) => this.notification(method, params));
                 this.client.on('closed', error => {
@@ -100,7 +103,7 @@ class XpAutoDebugAdapter {
                         this.entryBreakpoint = entry.breakpointId;
                     }
                     await this.client.request('XpAuto.run', {
-                        source: this.source, resourceName: this.sourceUrl, noDebug: !!this.config.noDebug,
+                        source: this.source, resourceName: this.sourceUrl, noDebug: !!this.config.noDebug, project: this.project,
                     });
                 }
                 this.response(request);
@@ -214,6 +217,14 @@ class XpAutoDebugAdapter {
                 break;
             }
             case 'Debugger.paused': {
+                if (this.pauseOnEntry && params.reason !== 'exception') {
+                    const top = params.callFrames[0];
+                    const url = top?.url || this.scriptUrls.get(top?.location.scriptId);
+                    if (url !== this.sourceUrl) {
+                        this.client.request('Debugger.resume').catch(error => this.output(error.message, 'stderr'));
+                        return;
+                    }
+                }
                 this.callFrames = params.callFrames;
                 this.references.clear();
                 this.exception = params.data;

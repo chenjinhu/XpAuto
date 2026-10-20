@@ -69,7 +69,7 @@ exports.run = async function run() {
         const networkCompletion = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', networkHints.uri, networkHints.positionAt(networkHints.getText().length));
         assert.ok(networkCompletion.items.some(item => (item.label.label || item.label) === 'startHeartBeat'));
         console.log('PASS real VS Code: SDK completions including HTTP/WebSocket, inferred node variable, Chinese hover and signature help');
-        for (const [source, expected] of [['getp', 'getprop'], ['setp', 'setprop'], ['image.', 'requestScreenCapture']]) {
+        for (const [source, expected] of [['getp', 'getprop'], ['setp', 'setprop'], ['image.', 'requestScreenCapture'], ['browser.', 'executeJs'], ['browser.getState().', 'page_error'], ['browser.', 'getLoading'], ['browser.getLoading().', 'status'], ['browser.getLoading().', 'progress'], ['browser.getState().', 'load_status'], ['device.', 'getModel'], ['utils.', 'getInstalledApps'], ['file.', 'readFileBytes'], ['setLogView', 'setLogViewSizeEx'], ['require.', 'resolve'], ['const n=asEasyClick(text("a").getOneNodeInfo()); n.', 'text']]) {
             const doc = await vscode.workspace.openTextDocument({ language: 'javascript', content: source });
             const items = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', doc.uri, new vscode.Position(0, source.length));
             assert.ok(items.items.some(item => (item.label.label || item.label) === expected));
@@ -130,7 +130,7 @@ exports.run = async function run() {
         assert.equal(api.getState().state, 'paused');
         console.log('PASS real VS Code: floaty completion and main-thread view updates while paused at a breakpoint');
         const propertyPreview = await session.customRequest('evaluate', { frameId: frame.id, context: 'repl',
-            expression: 'getprop("ro.product.model").length > 0 && typeof setprop === "function" && typeof image.requestScreenCapture === "function"' });
+            expression: 'getprop("ro.product.model").length > 0 && typeof setprop === "function" && typeof image.requestScreenCapture === "function" && typeof browser.executeJs === "function" && typeof browser.getLoading === "function"' });
         assert.equal(propertyPreview.result, 'true');
         assert.equal(api.getState().state, 'paused');
         console.log('PASS real VS Code: screenshot/property completions and getprop in paused console');
@@ -222,6 +222,7 @@ exports.run = async function run() {
         await until(() => !vscode.debug.activeDebugSession && api.getState().state === 'idle', 'run-only debugger cleanup');
         const restart = await launch(sample, { stopOnEntry: true });
         assert.equal((await event(restart, 'stopped')).body.reason, 'entry');
+        assert.equal((await restart.customRequest('stackTrace', {threadId:1})).stackFrames[0].source.path, sample);
         await stop(restart);
         console.log('PASS real VS Code: run without debugging, stop on entry, and repeated connections');
         for (let index = 0; index < 3; index++) {

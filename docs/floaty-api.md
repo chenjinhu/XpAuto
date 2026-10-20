@@ -122,3 +122,7 @@ node scripts/verify-vscode-debug.mjs
 ```
 
 单元测试覆盖 XML 解析、命名空间、中文与转义、未知输入、DTD/实体拒绝、字节/节点/深度上限及 floaty 代码推断。真机测试覆盖 13 个接口、子控件更新、真实触摸开关、焦点、XML 文件、同标签失败保留、View 复用、16 个窗口上限、结束/异常/停止/断开清理、权限超时与取消，以及后续脚本恢复。
+
+## 控制内置窗口
+
+`hasFloatViewPermission`、`showLogWindow/closeLogWindow`、`showCtrlWindow/closeCtrlWindow`、`setCtrlViewSizeEx`、`setLogViewSizeEx` 用于应用现有悬浮球与日志窗，和本文的业务窗口共存。详见 [内置悬浮窗控制](project-api.md#内置悬浮窗控制)。

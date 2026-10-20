@@ -11,10 +11,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.BooleanSupplier;
 
 /** View 只在主线程访问；等待期间检查取消，停止脚本不会被 UI 请求卡住。 */
-final class UiDispatcher {
+public final class UiDispatcher {
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    <T> T call(Callable<T> action, BooleanSupplier cancelled) throws Exception {
+    public <T> T call(Callable<T> action, BooleanSupplier cancelled) throws Exception {
         if (cancelled.getAsBoolean()) throw new CancellationException("悬浮窗操作已取消");
         if (Looper.myLooper() == Looper.getMainLooper()) return action.call();
         FutureTask<T> task = new FutureTask<>(() -> {

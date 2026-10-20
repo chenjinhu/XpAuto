@@ -55,6 +55,7 @@ public final class DeveloperServer extends WebSocketServer {
     private final Consumer<String> logListener;
     private final AtomicFile cachedScript;
     private volatile String lastSource;
+    private volatile JSONObject lastProject;
     private volatile String lastResourceName = "";
     private final Set<WebSocket> controllers = ConcurrentHashMap.newKeySet();
     private final AtomicReference<Session> active = new AtomicReference<>();
@@ -73,6 +74,7 @@ public final class DeveloperServer extends WebSocketServer {
             JSONObject cached = new JSONObject(new String(cachedScript.readFully(), StandardCharsets.UTF_8));
             lastSource = cached.getString("source");
             lastResourceName = cached.getString("resourceName");
+            lastProject = cached.optJSONObject("project");
         } catch (Exception ignored) { /* 尚未同步过脚本，保持空缓存。 */ }
         setReuseAddr(true);
         setConnectionLostTimeout(15);
@@ -126,7 +128,7 @@ public final class DeveloperServer extends WebSocketServer {
         if ("/control".equals(handshake.getResourceDescriptor())) {
             controllers.add(socket);
             event(socket, "XpAuto.ready", object("protocolVersion", 1, "app", "XpAuto",
-                    "capabilities", new JSONArray().put("captureNodes")));
+                    "capabilities", new JSONArray().put("captureNodes").put("projectModules")));
             event(socket, "XpAuto.state", state);
             return;
         }
@@ -235,7 +237,7 @@ public final class DeveloperServer extends WebSocketServer {
             if (local.runtime == null || local.closed.get()) return;
             local.running.set(true);
             local.resourceName = lastResourceName;
-            local.execute(lastSource, lastResourceName, ++local.nextRunId);
+            local.execute(lastSource, lastResourceName, ++local.nextRunId, null, lastProject);
         });
     }
 
@@ -352,7 +354,8 @@ public final class DeveloperServer extends WebSocketServer {
                     noDebug = params.optBoolean("noDebug", false);
                     int runId = ++nextRunId;
                     reply(socket, request, object("runId", runId));
-                    executor.execute(() -> execute(source, sourceName, runId));
+                    JSONObject project = params.optJSONObject("project");
+                    executor.execute(() -> execute(source, sourceName, runId, project, null));
                 } else if ("XpAuto.stop".equals(method)) {
                     stopExecution();
                     reply(socket, request, object("accepted", true));
@@ -378,7 +381,7 @@ public final class DeveloperServer extends WebSocketServer {
             for (WebSocket control : controllers) event(control, "XpAuto.log", message);
         }
 
-        private void execute(String source, String sourceName, int runId) {
+        private void execute(String source, String sourceName, int runId, JSONObject payload, JSONObject savedProject) {
             long startedAt = System.currentTimeMillis();
             boolean success = false;
             String errorText = "";
@@ -387,31 +390,54 @@ public final class DeveloperServer extends WebSocketServer {
             Constant.isRunning = true;
             try {
                 if (closed.get() || cancelled.get()) return;
-                lastSource = source;
-                lastResourceName = sourceName;
+                JSONObject project = savedProject;
+                if (payload != null) {
+                    project = new JSONObject(com.vixmobi.auto.runtime.ScriptProject.install(
+                        new File(context.getFilesDir(), "projects"), payload.toString()).toString());
+                    File entryFile = new File(project.getString("directory"), project.getString("entry"));
+                    if (!source.equals(com.vixmobi.auto.utils.ExactFiles.read(entryFile.getPath()))) {
+                        com.vixmobi.auto.runtime.ScriptProject.delete(new File(project.getString("directory")).toPath());
+                        throw new IllegalArgumentException("项目入口与运行源码不一致");
+                    }
+                }
+                JSONObject previousProject = lastProject;
                 FileOutputStream output = null;
                 try {
                     output = cachedScript.startWrite();
-                    output.write(object("source", source, "resourceName", sourceName).toString().getBytes(StandardCharsets.UTF_8));
+                    output.write(object("source", source, "resourceName", sourceName, "project", project).toString().getBytes(StandardCharsets.UTF_8));
                     cachedScript.finishWrite(output);
                 } catch (Exception error) {
                     if (output != null) cachedScript.failWrite(output);
-                    logListener.accept("脚本缓存失败：" + error.getMessage());
+                    if (payload != null && project != null) com.vixmobi.auto.runtime.ScriptProject.delete(new File(project.getString("directory")).toPath());
+                    throw new IllegalStateException("脚本缓存失败，保留上一份项目", error);
+                }
+                lastSource = source;
+                lastResourceName = sourceName;
+                lastProject = project;
+                // 只有新缓存提交成功后才清理旧快照，避免断电或写入失败破坏手机重跑。
+                if (previousProject != null && (project == null || !previousProject.getString("directory").equals(project.getString("directory")))) {
+                    try { com.vixmobi.auto.runtime.ScriptProject.delete(new File(previousProject.getString("directory")).toPath()); }
+                    catch (Exception error) { Log.w(TAG, "旧项目清理失败", error); }
                 }
                 setState("running", "运行中：" + sourceName, sourceName);
                 consoleMessage("info", "[XpAuto] 开始运行 " + sourceName);
                 event(socket, "XpAuto.running", object("runId", runId));
                 inspector.setSkipAllPauses(noDebug);
                 runtime.getExecutor("__xpautoResetNetwork();").executeVoid();
-                runtime.getExecutor(source).setResourceName(sourceName).executeVoid();
+                File root = project == null ? context.getFilesDir() : new File(project.getString("directory"));
+                modules.execute(runtime, source, sourceName, root,
+                    project == null ? "main.js" : project.getString("entry"),
+                    project == null ? root.toURI().toString() : project.getString("sourceRoot"),
+                    project == null ? "xpauto" : project.getString("nodeMode"), project != null);
                 success = true;
             } catch (Exception error) {
                 errorText = error.toString();
                 if (error instanceof BaseJavetScriptingException) {
                     JavetScriptingError scriptError = ((BaseJavetScriptingException) error).getScriptingError();
-                    errorText = scriptError.getDetailedMessage() + "\n" + sourceName + ":"
-                            + scriptError.getLineNumber() + ":" + (scriptError.getStartColumn() + 1);
-                    if (scriptError.getStack() != null) errorText += "\n" + scriptError.getStack();
+                    errorText = scriptError.getDetailedMessage();
+                    // 模块异常的栈已带真实 sourceURL，不能把 SDK 行号拼到入口文件名上。
+                    if (scriptError.getStack() != null && !scriptError.getStack().isEmpty()) errorText += "\n" + scriptError.getStack();
+                    else errorText += "\n" + sourceName + ":" + scriptError.getLineNumber() + ":" + (scriptError.getStartColumn() + 1);
                 }
                 if (!cancelled.get()) consoleMessage("error", errorText);
                 Log.i(TAG, "Script ended: " + errorText);

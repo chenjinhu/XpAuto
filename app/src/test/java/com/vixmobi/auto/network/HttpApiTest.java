@@ -99,6 +99,20 @@ public class HttpApiTest {
         try { pending.get(1, TimeUnit.SECONDS); fail("应取消请求"); } catch (ExecutionException error) { assertTrue(error.getCause() instanceof CancellationException); }
         api.resetCancellation(); assertNotNull(request(options("/echo")));
     }
+    @Test public void browserPostIsNotReplayedWhenResponseConnectionDrops() {
+        // 服务端已收到页面命令但响应丢失时，不能自动执行第二遍。
+        server.setDispatcher(new Dispatcher() {
+            @Override public MockResponse dispatch(RecordedRequest request) {
+                return new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST);
+            }
+        });
+        JsonObject options = options("/api/js/execute");
+        options.addProperty("method", "POST");
+        options.addProperty("requestBody", "{\"script\":\"sideEffect()\"}");
+        options.addProperty("retryOnConnectionFailure", false);
+        assertNull(request(options));
+        assertEquals(1, server.getRequestCount());
+    }
     @Test public void interruptedDownloadResumesAndPreservesExistingTarget() throws Exception {
         File target = new File(directory, "asset.bin"); Files.write(target.toPath(), new byte[] { 7 });
         JsonObject options = options("/download"); options.addProperty("path", "asset.bin"); options.addProperty("timeout", 1000);

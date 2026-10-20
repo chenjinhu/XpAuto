@@ -134,7 +134,9 @@ public final class HttpApi {
         if (timeout < 1) throw new IllegalArgumentException("timeout 必须大于 0，单位毫秒");
         OkHttpClient.Builder builder = client.newBuilder().callTimeout(timeout, TimeUnit.MILLISECONDS)
                 .connectTimeout(timeout, TimeUnit.MILLISECONDS).readTimeout(timeout, TimeUnit.MILLISECONDS).writeTimeout(timeout, TimeUnit.MILLISECONDS)
-                .followRedirects(bool(options, "followRedirects", true)).followSslRedirects(bool(options, "followRedirects", true));
+                .followRedirects(bool(options, "followRedirects", true)).followSslRedirects(bool(options, "followRedirects", true))
+                // 浏览器页面 JS 可能有副作用，允许调用者禁止连接失败后的自动重放。
+                .retryOnConnectionFailure(bool(options, "retryOnConnectionFailure", true));
         JsonObject proxy = object(options, "proxy");
         if (proxy.size() > 0) builder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(string(proxy, "host", ""), integer(proxy, "port", 0))));
         else {

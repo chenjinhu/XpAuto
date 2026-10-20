@@ -1,5 +1,9 @@
 # XpAuto
 
+0.9.0 新增 CommonJS 多文件项目、资源同步、`device` 与应用列表、内置悬浮窗控制、EasyClick 节点属性提示。首次更新对应 APK 后，日常 F5 只同步 JS 与资源。用法见工程 `docs/project-api.md`，示例见 `examples/project/`。
+
+0.8.0 适配 vixBrowser 1.4：增加 `browser.getLoading()` 及 `status`、`progress` 代码提示，完整状态新增 `load_status`、`progress`。页面等待识别完成与失败状态，并兼容旧版浏览器。已有启动、导航、页面 JS、配置、缓存与历史操作均保留。手机端需更新一次 APK；完整文档位于工程 `docs/browser-api.md`，示例为 `examples/browser/main.js`。默认连接同机 `127.0.0.1:8765`，无需 Root。
+
 通过 USB 连接已经运行的 XpAuto Android 应用，在 VS Code 中运行和调试 JavaScript。F5 只同步脚本，不构建、安装或重启应用。
 
 手机打开 XpAuto，授予悬浮窗权限后自动开启运行环境并显示悬浮球，运行脚本前开启无障碍服务；电脑确保 ADB 可用。打开 XpAuto 侧栏连接设备，再打开本地 `.js` 文件，运行 **XpAuto: 调试当前脚本**。
@@ -31,7 +35,7 @@
 
 可选 `device` 指定 ADB 序列号，`stopOnEntry` 在执行入口暂停。设置 `xpauto.adbPath` 可指定 ADB 路径。连接服务仅监听手机回环地址，插件按需建立并清理自己的 ADB 转发。
 
-首版同步单个 JS 文件；多文件模块导入尚未实现。手机无障碍 SDK 作为全局接口加载，业务源文件行号保持不变。
+默认同步入口目录的 JS/CJS/JSON；launch 配置可设置 `projectRoot`、`resources` 和 `nodeMode`。入口与依赖在 CommonJS 局部作用域运行，支持 `require()`、`module.exports` 和依赖断点，手机无障碍 SDK 仍为全局 API。资源用 `file.readFile(__dirname + "/assets/文件")` 读取。
 
 开发与验证：`npm ci`、`npm test`、`npm run package`。仓库根目录的 `node scripts/verify-vscode-debug.mjs` 使用真实 VS Code 扩展宿主和已运行的手机做集成测试。
 
@@ -68,3 +72,5 @@
 同时增加全局 `getprop`、`setprop` 的补全、中文说明及参数提示；系统属性用法见仓库 `docs/system-properties-api.md`，只读示例位于 `examples/system-properties/main.js`。
 
 新增 `image` 的中文代码提示：系统截图授权、全屏/区域截图、Bitmap、文件保存、Base64、像素读取、裁剪和内存回收。返回对象可以继续补全 `getWidth/getHeight/isRecycled/recycle`。用法与兼容边界见 工程内 `docs/image-api.md`，示例见 工程内 `examples/screenshot/main.js`。需要更新一次手机 APK；日常 F5 继续只同步 JS。
+
+0.7.1 修正 `browser.start()`：启动并切到浏览器前台，确认界面和 HTTP 接口均就绪后返回；已有页面保留，无法进入前台时明确报错。

@@ -16,6 +16,10 @@
 - 交流/提建议/定制化需求 加微信:cjh-18888
 
 
+## 官方浏览器
+
+官方推荐浏览器 **vixBrowser** 已提供全局 `browser` 接口：启动、导航与等待、页面 JS、Referer/UA/history.length 配置、前进后退及清缓存。用法见 [浏览器 API](docs/browser-api.md) 和 [调用示例](examples/browser/main.js)。同一手机直接连接，无需 Root。
+
 ## 截图与图片
 
 支持 `image.requestScreenCapture()` 授权、全屏/区域截图、Bitmap、PNG/JPEG/WebP 保存、Base64、像素读取和图片回收。接口及权限边界见 [截图 API](docs/image-api.md)，可运行示例见 [截图示例](examples/screenshot/main.js)。
@@ -56,7 +60,7 @@
 
 ### XpAuto 手机端与 VS Code 插件
 
-插件 0.6.0 提供 **JavaScript 代码提示、UI 节点抓取与分析、节点属性复制和代码生成**。在 XpAuto 侧栏点击节点树图标即可打开截图、节点树与属性联动面板，支持快照保存/载入、XPath 测试及六种右键复制操作。新增历史搜索、单 Tab 模式和 ARGB/HEX 像素颜色。用法与开发结构见 **[节点分析与代码提示文档](docs/ui-inspector.md)**。
+插件 0.9.0 提供 **JavaScript 代码提示、UI 节点抓取与分析、节点属性复制和代码生成**。在 XpAuto 侧栏点击节点树图标即可打开截图、节点树与属性联动面板，支持快照保存/载入、XPath 测试及六种右键复制操作。新增历史搜索、单 Tab 模式和 ARGB/HEX 像素颜色。用法与开发结构见 **[节点分析与代码提示文档](docs/ui-inspector.md)**。
 
 手机主界面提供权限状态、运行环境开关、最近同步脚本和运行控制台。打开应用或从授权页返回时，只要已有悬浮窗权限，就自动开启运行环境并显示悬浮球，无需再次点击启动。无障碍权限不影响悬浮球显示，但运行脚本前仍会检查必要权限。通知权限用于显示前台运行状态，拒绝通知不影响脚本执行。脚本保存在应用私有目录，不要求全盘存储权限。
 
@@ -79,7 +83,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```sh
 npm --prefix vscode-extension ci
 npm --prefix vscode-extension run package
-code --install-extension vscode-extension/xpauto-0.6.0.vsix --force
+code --install-extension vscode-extension/xpauto-0.9.0.vsix --force
 ```
 
 1. 手机打开 **XpAuto**，授予悬浮窗权限后自动显示悬浮球；运行脚本前开启无障碍服务。
@@ -91,7 +95,7 @@ code --install-extension vscode-extension/xpauto-0.6.0.vsix --force
 
 **日常 F5 只连接已运行应用并发送当前 JS，不执行 Gradle、安装 APK 或重启应用。** 不调试时可用命令 **XpAuto: 运行当前脚本**。控制台显示 `console.log`、`print`、异常堆栈和原始文件行号，支持暂停时及运行完成后的表达式求值。停止脚本使用独立控制连接，支持中止 V8 死循环和断点暂停。
 
-VS Code 插件使用自己的 DAP 适配器，手机端集成 Javet V8 Inspector 和现有无障碍 SDK。每次编辑器调试创建独立 runtime，SDK 与业务脚本分别加载，保留业务文件行号。当前同步入口为单个 JS 文件，多文件模块导入尚未实现。运行环境开启时监听 `127.0.0.1:9229`，通过插件创建的临时 ADB 转发连接；debug 和 release 均包含该用户可控入口，点击“结束”或“关闭运行环境”即可关闭。
+VS Code 插件使用自己的 DAP 适配器，手机端集成 Javet V8 Inspector 和现有无障碍 SDK。每次编辑器调试创建独立 runtime，SDK 与业务脚本分别加载，保留业务文件行号。支持 CommonJS 多文件项目、JSON 与显式资源同步，入口和依赖均可打断点；用法见 [项目与兼容 API](docs/project-api.md)。运行环境开启时监听 `127.0.0.1:9229`，通过插件创建的临时 ADB 转发连接；debug 和 release 均包含该用户可控入口，点击“结束”或“关闭运行环境”即可关闭。
 
 验证命令（先打开手机应用并完成必要授权，均不会构建或安装 APK）：
 
@@ -238,3 +242,5 @@ main();
 - https://github.com/kkevsekk1/AutoX (功能实现)
 
 新增脚本模块：线程/定时器、工具与二维码、SQLite、点击/多点触摸/拖拽、输入法、节点快照和动态权限。参见 [线程](docs/thread-api.md)、[工具](docs/utils-api.md)、[数据库](docs/sqlite-api.md)、[快捷操作](docs/global-shortcut-api.md)；示例：`examples/script-modules/main.js`。
+
+新增项目能力：精确 UTF-8 / 二进制读写、`device` 与应用列表、内置悬浮球和日志窗 API、`require()` 与资源同步、EasyClick 节点属性模式。详见 [项目与兼容 API](docs/project-api.md)，示例为 `examples/project/`。

@@ -212,6 +212,17 @@ final class FloatingControls {
         if (root.isAttachedToWindow()) windows.updateViewLayout(root, params);
     }
     void onConfigurationChanged(Configuration configuration) { layout(); }
+    /** 脚本传入屏幕像素；越界坐标由现有布局逻辑收回屏幕内。 */
+    void configure(org.json.JSONObject options) {
+        if (options.has("x")) anchorX = (int) Math.round(options.optDouble("x"));
+        if (options.has("y")) anchorY = (int) Math.round(options.optDouble("y"));
+        if (options.has("backgroundColor")) root.setBackgroundColor(Color.parseColor(options.optString("backgroundColor")));
+        layout(); savePosition();
+    }
+    void setVisible(boolean visible) {
+        if (visible && !root.isAttachedToWindow()) { layout(); windows.addView(root, params); }
+        if (!visible && root.isAttachedToWindow()) { setExpanded(false); windows.removeViewImmediate(root); }
+    }
     void bringToFront() {
         if (!root.isAttachedToWindow()) return;
         windows.removeViewImmediate(root);

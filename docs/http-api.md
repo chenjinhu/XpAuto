@@ -41,6 +41,7 @@ if (response) {
 | `file` | `{key, filePath, fileName?, contentType?}` 数组；与 `data` 组成 multipart |
 | `proxy` | `{host, port}` HTTP 代理；`false` 表示直连 |
 | `followRedirects` | 默认 `true` |
+| `retryOnConnectionFailure` | 默认 `true`；浏览器客户端设为 false，禁止连接失败时自动重放页面命令 |
 | `userAgent`, `referrer` | 覆盖 User-Agent / Referer |
 | `ignoreHttpErrors` | 默认 `false`，4xx/5xx 返回 null；设为 true 可读取错误响应 |
 | `ignoreContentType` | 默认 `true`，允许将任意类型解码为字符串；false 时仅允许文本/JSON/XML 等 |

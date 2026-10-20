@@ -34,6 +34,7 @@ Android 将新的 applicationId 视为新应用，不能覆盖升级历史包名
 ## 环境与启动
 
 - 使用 JDK 17 和 Android SDK Platform 34 构建。
+- 构建工具为 AGP 8.9.2、Gradle 8.11.1，原生库与 APK/AAB 的 16 KB 检查见 [兼容性文档](native-16kb.md)。
 - 原生中断桥接使用 NDK 27.0.12077973、CMake 3.22.1；可通过 Android Studio SDK Manager 安装。
 - 应用最低 Android 11（API 30），当前目标 API 34。
 - 应用包名为 **com.vixmobi.auto**，产品名称为 **XpAuto**。
@@ -219,7 +220,7 @@ node scripts/verify-vscode-debug.mjs
 
 查询悬浮窗节点时使用 UIAutomator 的全部窗口模式。只查询焦点窗口会漏掉不抢焦点的悬浮球。系统 UI 查询也可能短暂挂起其他无障碍服务，回归脚本需要在触发新的运行权限检查前等待服务恢复。
 
-当前测试手机（Android 16）首次打开新包名的 Debug APK 时，会显示原生库 16 KB 对齐兼容性提示，列出 Javet 与 xpauto-inspector 两个动态库。该系统对话框会遮挡首页，执行 UI 回归前需要先关闭。关闭提示仅便于测试，不代表已修复库的兼容性；本次包名迁移未调整这两个库的对齐配置。
+包名迁移时的 Debug APK 曾显示原生库 16 KB 对齐兼容性提示。后续已修正自研动态库的 LOAD/RELRO 对齐并更新 APK/AAB 打包工具，验证方法见 [16 KB 原生库兼容性](native-16kb.md)。不要通过关闭系统警告代替兼容性检查。
 
 排查问题时先读取运行状态和手机控制台，再查看系统日志：
 
@@ -335,3 +336,48 @@ Chrome 中节点分析器的截图命中、属性和树联动、XPath、右键�
 后续排查确认：SukiSU 中已授权的是旧包 `com.xiaopang.xianyu`（UID 10314），新包 `com.vixmobi.auto`（UID 10319）的超级用户开关关闭，应用进程中 `/system/bin/su` 不可见。`persist.acp.instance_id` 属性名合法，错误发生在写入前。新包的 Root 授权尚待用户确认；排查步骤已补入系统属性文档。
 
 真实 VS Code 扩展宿主通过截图/系统属性补全、断点内 getprop、节点抓取、单步、控制台、异常、暂停/继续/停止和重复断连回归；整个调试过程的应用 PID 与安装时间保持不变。已更新一次手机 APK，并打包安装 `vscode-extension/xpauto-0.6.0.vsix`；已有 VS Code 窗口执行 `Developer: Reload Window` 载入新插件，日常 F5 不构建或安装 APK。
+
+## 官方浏览器 vixBrowser（插件 0.7.0）
+
+全局 `browser` 封装浏览器工程 `android-webview-browser/HTTP_API.md` 的全部 HTTP 接口，并提供 `start`、`open`、`waitForPage` 和 `waitFor`。接口、错误语义和示例见 [浏览器 API](browser-api.md)。实现位于 `assets/browser.js`，经 `ScriptModules.ASSETS` 同时加载到开发服务和手机本地入口；启动复用 `utils.openApp`，通信复用 `http.request`，无需 Root。
+
+配置实例互相独立，默认地址为手机本机 `127.0.0.1:8765`。导航返回的 202 只表示接受操作，等待函数检查页面错误并要求连续两次同 URL 空闲；每次 HTTP 和 sleep 都受剩余时间限制。POST 请求体按 UTF-8 校验 64 KiB 上限，错误保留浏览器原始码和 HTTP 状态。为避免重放有副作用的页面 JS，HTTP 增加可选 `retryOnConnectionFailure`，浏览器请求显式设为 false，原有 HTTP 调用默认行为保持兼容。
+
+2026-10-16：63 项 Android 单元测试、25 项插件测试通过，TypeScript 类型检查通过。Pixel 7a / Android 16 的真实 vixBrowser 联调覆盖启动、配置原子更新、UA/Referer 请求头、文档开始 history 覆盖、重定向、页面等待、JS 标量/对象/数组/null、异常/Promise/BigInt/循环引用错误、SPA 条件、缓存保留 Cookie/DOM Storage、前进后退、刷新、配置清除、页面错误、超时、HTTP 等待中停止和下一轮恢复。测试后恢复浏览器原配置及可恢复的原页面，移除测试转发；XpAuto PID 与安装时间在联调期间保持不变。
+
+真实 VS Code 扩展宿主验证了 `browser` 方法与状态字段补全、断点控制台中的模块加载，并通过节点抓取、单步、变量查看、异常暂停、忙循环暂停/恢复/停止及重复断连回归。调试期间 Android PID 与安装时间保持不变。已更新手机 APK，并生成、安装 `vscode-extension/xpauto-0.7.0.vsix`；已有 VS Code 窗口执行 `Developer: Reload Window` 载入新提示，日常 F5 不重新构建或安装应用。
+
+### 浏览器前台启动修正（0.7.1）
+
+原 `browser.start()` 在发出启动 Intent 后，只要后台 HTTP 服务可用就返回，早于界面实际切到前台。现在复用 `getCurrentRunningPkg()` 检查前台窗口，连续两轮确认浏览器在前台且 HTTP 就绪后返回；HTTP 等待期间也重新检查前台。HOME 切换覆盖首次启动时，每秒最多重发一次无 URL 的启动请求，不刷新页面。前台等待受同一总超时和停止机制约束，无法切到前台时抛 `foreground_timeout`，不会把后台服务在线当作启动成功。前台查询使用运行脚本已要求的无障碍服务。
+
+2026-10-16：26 项插件测试及 TypeScript 检查通过，APK 构建成功。Pixel 7a / Android 16 验证从桌面唤起后台浏览器、HOME 后立即启动、进程未运行时冷启动、重复调用保留页面；同一次脚本求值检查返回时的包名，再通过系统 `topResumedActivity` 核对实际前台。完整浏览器接口回归通过，测试后恢复原配置与可恢复的原页面。已覆盖更新手机 APK，并打包、安装插件 0.7.1。
+
+### vixBrowser 1.4 加载接口（插件 0.8.0）
+
+对照浏览器工程最新 `HTTP_API.md` 和 `MainActivity`，增加 `browser.getLoading()` 对应 `GET /api/loading`。该端点字段位于响应根对象，客户端保留 `ok`、`status`、`loading`、`progress`、`url`、`title`、`page_error`，不按旧端点的 `state` 包装提取。查询成功时保留页面 `error` 状态供脚本显示；网络及接口错误仍沿用 `VixBrowserError`。
+
+`open` 和 `waitForPage` 继续轮询完整状态并返回 `state`，1.4 要求 `load_status=complete` 且 `loading=false`，连续两次 URL 一致后完成；`error` 状态立即抛 `page_load_failed`。进度 100 不作为成功依据，`idle` 继续等待。旧浏览器缺少 `load_status` 时兼容原先的 `loading` 判断，不要求旧版提供新端点，也不推算其进度。
+
+类型声明增加 `XpAutoBrowserLoading` 和四种状态联合类型，完整状态的 `load_status`、`progress` 标为可选以反映旧版兼容性。默认和自定义客户端共用实现。文档及示例见 [浏览器 API](browser-api.md) 和 `examples/browser/main.js`，新增代码注释和提示均为中文。
+
+2026-10-16：28 项插件测试、TypeScript 类型检查及 APK 构建通过，新 APK 的 8 个原生库继续通过 16 KB ELF 与 ZIP 对齐检查。受控测试覆盖新版状态、进度 100 仍失败、旧版等待兼容、缺少端点的 404、503、非法响应和取消传递。Pixel 7a / Android 16 上使用真实 vixBrowser 1.4 验证四种加载状态、进度、重定向、导航等待、页面错误和停止恢复，并回归原有浏览器接口；测试结束恢复原配置与可恢复的原页面地址。已覆盖更新手机 APK 并安装插件 0.8.0。
+
+真实 VS Code 扩展宿主验证新增方法和返回字段补全、断点内浏览器模块可用，并通过断点、单步、控制台、异常暂停、忙循环暂停/继续/停止和反复断连回归。调试期间 XpAuto PID 与安装时间保持不变。已有编辑器窗口执行 `Developer: Reload Window` 载入新插件；日常 F5 仍只连接与同步脚本。
+
+
+### 项目同步、文件与节点兼容（插件 0.9.0）
+
+对照已有 EasyClick 工程补充五项能力，接口与迁移示例见 [项目与兼容 API](project-api.md)。代码以中文注释解释状态、线程切换和资源清理。
+
+- `ExactFiles` 统一 UTF-8 整文件读取、临时文件替换、字节写入；`FileUtils` 把错误与空内容区分，并修正 deleteLine 参数顺序和换行损失。URI 覆盖使用 wt。
+- `DeviceApi` 读取系统屏幕、机型、电源与网络信息，通过包管理器枚举应用。应用列表在 `ScriptBlocking` 段执行，逐项检查取消；不使用 Root。
+- `BuiltinFloatApi` 经 `UiDispatcher` 在主线程访问 `DeveloperService` 的已有窗口。日志继续使用服务的同一份缓存，隐藏不清空；配置为部分更新。
+- 插件 `src/project.js` 从入口目录收集源码，显式包含资源；拒绝符号链接与路径越界，限制文件数和体积。`XpAuto.run.params.project` 携带 entry、sourceRoot、nodeMode 和 base64 文件表。控制握手增加 projectModules 能力；旧 APK 明确提示升级。
+- `ScriptProject` 在脚本执行器内验证并安装独立快照，保存入口缓存成功后才清理旧快照。同步源码必须和入口文件一致。手机重跑使用缓存的完整快照；旧协议单文件运行保留原先全局作用域。
+- `ModuleFiles` 负责路径定位与读取，`modules.js` 负责每轮 CommonJS 缓存和循环依赖。定位与读取分离，缓存命中不重读源码。SDK 在项目代码前注册；模块工厂使用各自的 sourceURL，保留源码行号。URL 必须与 VS Code 的 file:/// 和 UTF-8 百分号编码一致，不能由 URI.resolve 变成 file:/。
+- `node-compat.js` 用 JS Proxy 转换属性并透传动作，WeakMap 保存原生对象映射。全局 click 和快捷操作在跨 Java 桥接前解包，避免把 JS 代理当作原生节点。方法模式默认保留；asEasyClick 提供明确的静态类型提示。
+
+本地验证：`npm --prefix vscode-extension test`、TypeScript 声明检查、`:app:testDebugUnitTest :app:assembleDebug`。真机验证脚本 `scripts/verify-project.cjs` 覆盖原始字节、混合换行、短覆盖、空与失败区分、设备应用、内置窗口、节点属性/方法切换、CommonJS/JSON/循环依赖、依赖断点、更新缓存和资源移除。`scripts/verify-vscode-debug.mjs` 回归完整编辑器调试流程，并比较调试前后 Android PID 与安装时间。
+
+2026-10-19 验证：70 项 JVM 单元测试、32 项插件测试、类型检查和 APK 构建通过，8 个原生库保持 16 KB ELF 与 ZIP 对齐。Pixel 7a / Android 16 通过五项 API 与依赖断点验证，真实 VS Code 通过补全、节点抓取、断点与单步、异常暂停、忙循环控制和多次断连回归，期间 Android PID 与安装时间未改变。已生成并安装插件 0.9.0；现有编辑器窗口使用 `Developer: Reload Window` 加载更新。

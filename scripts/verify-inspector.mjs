@@ -180,6 +180,12 @@ try {
     await client.event('Debugger.paused');
     await client.request('Debugger.resume');
     await client.event('Debugger.resumed');
+    // 真正打断正在执行的忙循环，验证重新链接后的原生 RequestInterrupt 桥接。
+    await client.request('Debugger.pause');
+    await client.event('Debugger.paused');
+    await client.request('Debugger.resume');
+    await client.event('Debugger.resumed');
+    console.log('PASS: native interrupt pauses and resumes a running JavaScript loop');
     await client.request('XpAuto.stop');
     const interrupted = await client.event('XpAuto.finished', event => event.runId === loopingRun.runId);
     assert.equal(interrupted.cancelled, true);

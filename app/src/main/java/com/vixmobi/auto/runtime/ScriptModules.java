@@ -21,12 +21,17 @@ public final class ScriptModules {
     "logging.js",
     "http.js",
     "utils.js",
+    "device.js",
+    "builtin-floaty.js",
     "sqlite.js",
     "thread.js",
+    "node-compat.js",
     "base.js",
     "shortcuts.js",
     "properties.js",
-    "image.js"
+    "image.js",
+    "browser.js",
+    "modules.js"
   };
   private final ThreadApi threads;
   private final SqliteApi sqlite;
@@ -36,10 +41,12 @@ public final class ScriptModules {
   private final NodeSettings nodes = new NodeSettings();
   private final Context context;
   private final ShellApi shell;
+  private final ModuleFiles moduleFiles;
 
   public ScriptModules(Context context, ShellApi shell, Consumer<String> errors) {
     this.context = context;
     this.shell = shell;
+    moduleFiles = new ModuleFiles(context.getFilesDir());
     threads = new ThreadApi(errors);
     sqlite = new SqliteApi(context.getDatabasePath("xpauto.db").getParentFile());
     utils = new UtilityApi(context, errors);
@@ -48,8 +55,11 @@ public final class ScriptModules {
 
   public void install(V8Runtime runtime) throws JavetException {
     try (V8ValueGlobalObject global = runtime.getGlobalObject()) {
+      global.set("__xpautoModuleFiles", moduleFiles);
       global.set("__xpautoSqlite", sqlite);
       global.set("__xpautoUtils", utils);
+      global.set("__xpautoDevice", new com.vixmobi.auto.toolbox.DeviceApi(context));
+      global.set("__xpautoBuiltinFloat", new com.vixmobi.auto.floaty.BuiltinFloatApi(context));
       global.set("__xpautoImage", image);
       global.set("encodeDecoder", new EncodeDecoder());
       global.set("__xpautoGesture", gestures);
@@ -58,6 +68,19 @@ public final class ScriptModules {
       global.set("__xpautoPermissions", new PermissionApi(context, shell));
     }
     threads.install(runtime);
+  }
+
+  /** 项目入口在 CommonJS 局部作用域执行，旧协议保留全局脚本行为。 */
+  public void execute(V8Runtime runtime, String source, String resourceName,
+      java.io.File root, String entry, String sourceRoot, String nodeMode, boolean commonJs) throws JavetException {
+    moduleFiles.configure(root, entry, sourceRoot);
+    runtime.getExecutor("__xpautoModules.reset(); setNodeCompatibility(" +
+        new com.google.gson.Gson().toJson(nodeMode) + ");").executeVoid();
+    if (commonJs) {
+      try (V8ValueGlobalObject global = runtime.getGlobalObject()) { global.set("__xpautoEntrySource", source); }
+      try { runtime.getExecutor("__xpautoModules.run(__xpautoEntrySource);").executeVoid(); }
+      finally { runtime.getExecutor("delete globalThis.__xpautoEntrySource;").executeVoid(); }
+    } else runtime.getExecutor(source).setResourceName(resourceName).executeVoid();
   }
 
   public void reset() {

@@ -315,6 +315,7 @@ public class TaskBase extends UiSelector implements ITaskBase{
             killThread = false;
             // 加载脚本
             String script = FileUtils.readFile(script_path);
+            if (script == null) throw new java.io.IOException(FileUtils.getErrorMsg());
 
             // 加载基础脚本
             if (base == null) {
@@ -336,7 +337,9 @@ public class TaskBase extends UiSelector implements ITaskBase{
             for (String asset : com.vixmobi.auto.runtime.ScriptModules.ASSETS) {
                 v8Runtime.getExecutor(loadScriptFromAssets(asset)).setResourceName("xpauto://sdk/" + asset).executeVoid();
             }
-            v8Runtime.getExecutor(script).setResourceName(script_path).executeVoid();
+            java.io.File entryFile = new java.io.File(script_path).getAbsoluteFile();
+            modules.execute(v8Runtime, script, script_path, entryFile.getParentFile(), entryFile.getName(),
+                    entryFile.getParentFile().toURI().toString(), "xpauto", true);
             success = true;
         } catch (Exception e) {
             killThread = false;

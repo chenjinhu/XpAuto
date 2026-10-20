@@ -1,6 +1,6 @@
 # 工具函数与加解密
 
-参考 [EasyClick 工具函数](https://ieasyclick.com/docs/funcs/utils-api)。工具对象为 `utils`，加解密对象为 `encodeDecoder`。Android 权限、后台启动限制及包可见性仍适用，查询范围包括本应用与可见桌面应用。
+参考 [EasyClick 工具函数](https://ieasyclick.com/docs/funcs/utils-api)。工具对象为 `utils`，加解密对象为 `encodeDecoder`。Android 权限、后台启动限制及包可见性仍适用，应用枚举通过包管理器查询，遵循当前用户和系统包可见性规则。
 
 | 函数 | 返回/说明 |
 | --- | --- |
@@ -60,3 +60,7 @@ logd(utils.getStartAppCmd("com.vixmobi.auto"));
 参考页面未定义密钥派生与 IV，因此这里只承诺以上明确规则，不承诺与其他产品相同密码产生相同密文。DES/3DES、ECB 和固定 IV 用于兼容已有脚本；新协议应使用经认证的现代加密方案。MD5 仅用于普通校验，不用于密码保存。
 
 开发实现按职责分为 `toolbox/UtilityApi.java`、`toolbox/EncodeDecoder.java` 和 `assets/utils.js`；ZIP 使用 Zip4j 2.11.5，二维码使用 ZXing 3.5.3。
+
+## 设备与应用枚举
+
+新增 `device` 信息对象和 `utils.getInstalledApps/getInstalledPkgName/getInstalledAppName`。参数、返回字段及示例见 [项目与兼容 API](project-api.md#设备信息与应用列表)。

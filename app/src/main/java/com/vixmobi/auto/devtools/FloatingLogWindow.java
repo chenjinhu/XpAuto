@@ -26,6 +26,9 @@ final class FloatingLogWindow {
     private final WindowManager.LayoutParams params;
     private boolean following = true;
     private String lastText;
+    private LinearLayout card, header;
+    private TextView title, close;
+    private int requestedWidth, requestedHeight;
 
     FloatingLogWindow(Context context, Runnable clear, Runnable dismiss) {
         this.context = context;
@@ -33,18 +36,18 @@ final class FloatingLogWindow {
         root = new LinearLayout(context);
         root.setPadding(dp(4), dp(4), dp(4), dp(4));
         root.setContentDescription("日志悬浮窗");
-        LinearLayout card = new LinearLayout(context);
+        card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(UiStyle.shape(context, Color.WHITE, 16, true));
         card.setClipToOutline(true);
         card.setElevation(dp(3));
         root.addView(card, new LinearLayout.LayoutParams(-1, -1));
 
-        LinearLayout header = new LinearLayout(context);
+        header = new LinearLayout(context);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setBackgroundColor(UiStyle.SURFACE);
         card.addView(header, new LinearLayout.LayoutParams(-1, dp(48)));
-        TextView title = new TextView(context);
+        title = new TextView(context);
         title.setText("运行日志");
         title.setTextSize(15);
         title.setTextColor(UiStyle.INK);
@@ -55,7 +58,7 @@ final class FloatingLogWindow {
         title.setTooltipText("拖动标题可移动窗口");
         title.setOnClickListener(view -> { });
         header.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
-        TextView close = button("×", "关闭日志悬浮窗", dismiss);
+        close = button("×", "关闭日志悬浮窗", dismiss);
         close.setTextSize(24);
         header.addView(close, new LinearLayout.LayoutParams(dp(48), -1));
 
@@ -171,8 +174,8 @@ final class FloatingLogWindow {
                 WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
         int width = bounds.width() - insets.left - insets.right;
         int height = bounds.height() - insets.top - insets.bottom;
-        params.width = Math.min(dp(328), Math.max(1, width - dp(16)));
-        params.height = Math.min(dp(288), Math.max(1, height - dp(16)));
+        params.width = Math.min(requestedWidth > 0 ? requestedWidth : dp(328), Math.max(1, width - dp(16)));
+        params.height = Math.min(requestedHeight > 0 ? requestedHeight : dp(288), Math.max(1, height - dp(16)));
         params.x = Math.max(0, Math.min(params.x, width - params.width));
         params.y = Math.max(0, Math.min(params.y, height - params.height));
         if (root.isAttachedToWindow()) windows.updateViewLayout(root, params);
@@ -181,6 +184,20 @@ final class FloatingLogWindow {
     private void savePosition() {
         context.getSharedPreferences("floating-logs", Context.MODE_PRIVATE).edit()
                 .putInt("x", params.x).putInt("y", params.y).apply();
+    }
+
+    /** 部分更新配置；隐藏日志窗时服务保存配置，下次显示时再应用。 */
+    void configure(org.json.JSONObject options) {
+        if (options.has("x")) params.x = (int) Math.round(options.optDouble("x"));
+        if (options.has("y")) params.y = (int) Math.round(options.optDouble("y"));
+        if (options.has("w")) requestedWidth = Math.max(dp(160), (int) Math.round(options.optDouble("w")));
+        if (options.has("h")) requestedHeight = Math.max(dp(100), (int) Math.round(options.optDouble("h")));
+        if (options.has("textSize")) content.setTextSize((float) options.optDouble("textSize"));
+        if (options.has("title")) title.setText(options.optString("title"));
+        if (options.has("backgroundColor")) card.setBackground(UiStyle.shape(context, Color.parseColor(options.optString("backgroundColor")), 16, true));
+        if (options.has("showTitle")) header.setVisibility(options.optBoolean("showTitle") ? View.VISIBLE : View.GONE);
+        if (options.has("showCloseBtn")) close.setVisibility(options.optBoolean("showCloseBtn") ? View.VISIBLE : View.GONE);
+        layout();
     }
 
     void close() {

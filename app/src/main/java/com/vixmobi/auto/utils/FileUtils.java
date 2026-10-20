@@ -31,6 +31,20 @@ import java.util.List;
 
 public class FileUtils {
     private static final String TAG = tag;
+    private static final ThreadLocal<String> lastError = ThreadLocal.withInitial(() -> "");
+    /** 当前线程最近一次文件读写的错误；成功后清空。 */
+    public static String getErrorMsg() { return lastError.get(); }
+
+    public static byte[] readFileBytes(String path) {
+        try { byte[] bytes = Files.readAllBytes(Paths.get(path)); lastError.set(""); return bytes; }
+        catch (Exception error) { lastError.set(error.toString()); return null; }
+    }
+    public static boolean writeFileBytes(String path, byte[] bytes) { return writeFileBytes(path, bytes, false); }
+    /** 字节写入用于资源和模型，不经过字符串编码转换。 */
+    public static boolean writeFileBytes(String path, byte[] bytes, boolean append) {
+        try { ExactFiles.write(path, bytes, append); lastError.set(""); return true; }
+        catch (Exception error) { lastError.set(error.toString()); return false; }
+    }
 
     /**
      * 文件或者文件夹是否存在
@@ -47,15 +61,11 @@ public class FileUtils {
      * @return
      */
     public static String readFile(String filePath) {
-        StringBuilder content = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(Files.newInputStream(Paths.get(filePath)), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-        } catch (IOException e) {}
-        return content.toString();
+        try {
+            String content = ExactFiles.read(filePath);
+            lastError.set("");
+            return content;
+        } catch (Exception error) { lastError.set(error.toString()); return null; }
     }
 
     /**
@@ -66,26 +76,11 @@ public class FileUtils {
      * @return
      */
     public static boolean deleteLine(String filePath, int line, String contains) {
-        List<String> lines = readAllLines(filePath);
-        boolean allLines = line == -1;
-        String writeStr = "";
-        for (int i = 0; i < lines.size(); i++) {
-            if (!allLines && i == line){
-                // 跳过要删除的行
-                continue;
-            }else if (contains != null){
-                String lineStr = lines.get(i);
-                if (lineStr.contains(contains)){
-                    continue;
-                }
-
-            }
-            writeStr += lines.get(i) + "\n";
-
-        }
-
-        return deleteFile(filePath) && writeFile(filePath, writeStr);
-
+        try {
+            String content = ExactFiles.read(filePath);
+            String kept = ExactFiles.removeLines(content, line, contains);
+            return writeFile(kept, filePath);
+        } catch (Exception error) { lastError.set(error.toString()); return false; }
     }
 
 
@@ -97,7 +92,7 @@ public class FileUtils {
      */
     public static String readLine(String filePath, int line) {
         List<String> lines = readAllLines(filePath);
-        if (line < 0 || line >= lines.size()){
+        if (lines == null || line < 0 || line >= lines.size()){
             return "";
         }
         return lines.get(line);
@@ -111,16 +106,10 @@ public class FileUtils {
      */
     public static List<String> readAllLines (String filePath) {
 
-        List<String> lines = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                lines.add(line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return lines;
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
+            lastError.set(""); return lines;
+        } catch (Exception error) { lastError.set(error.toString()); return null; }
     }
 
     /**
@@ -131,18 +120,8 @@ public class FileUtils {
      * @return 写入成功返回true，否则返回false
      */
     public static boolean writeFile(String content,String fileName) {
-        // 使用try-with-resources来自动管理资源，自动关闭流
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Paths.get(fileName),
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
-            bufferedWriter.write(content);
-            bufferedWriter.flush();
-            bufferedWriter.close();
-
-            return true; // 成功写入
-        } catch (IOException e) {
-            printLogMsg("writeFile: IOException: " + e.getMessage());
-            return false; // 发生异常，返回false
-        }
+        if (content == null) { lastError.set("写入内容不能为 null"); return false; }
+        return writeFileBytes(fileName, content.getBytes(StandardCharsets.UTF_8), false);
     }
 
     /**
@@ -153,15 +132,8 @@ public class FileUtils {
      * @return 操作成功返回true，否则返回false
      */
     public static boolean appendFile(String filePath, String content) {
-        // 使用try-with-resources来自动管理资源，自动关闭流
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(Paths.get(filePath),
-                StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            bufferedWriter.write(content);
-            return true; // 文件写入成功
-        } catch (IOException e) {
-            printLogMsg("appendFile: IOException: " + e.getMessage());
-            return false; // 文件写入失败
-        }
+        if (content == null) { lastError.set("追加内容不能为 null"); return false; }
+        return writeFileBytes(filePath, content.getBytes(StandardCharsets.UTF_8), true);
     }
 
     /**
@@ -302,20 +274,7 @@ public class FileUtils {
      * 保存内容到TXT文件中
      */
     public static boolean writeToTxt(String fileName, String content) {
-        FileOutputStream fileOutputStream;
-        BufferedWriter bufferedWriter;
-        File file = new File(fileName);
-        try {
-            file.createNewFile();
-            fileOutputStream = new FileOutputStream(file);
-            bufferedWriter = new BufferedWriter(new OutputStreamWriter(fileOutputStream));
-            bufferedWriter.write(content);
-            bufferedWriter.close();
-        } catch (IOException e) {
-            printLogMsg("writeToTxt: IOException: " + e.getMessage());
-            return false;
-        }
-        return true;
+        return writeFile(content, fileName);
     }
 
     /**
@@ -355,23 +314,13 @@ public class FileUtils {
      * @return 文件内容的字符串表示。如果发生IO异常，则返回null。
      */
     public static String readUriFile(Context context, Uri uri) {
-        StringBuilder content = new StringBuilder();
-        try {
-            InputStream inputStream = context.getContentResolver().openInputStream(uri);
-            if (inputStream != null) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line);
-                    content.append('\n');
-                }
-                inputStream.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-        return content.toString();
+        try (InputStream input = context.getContentResolver().openInputStream(uri);
+             java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream()) {
+            if (input == null) throw new IOException("无法打开 URI");
+            byte[] buffer = new byte[8192];
+            for (int count; (count = input.read(buffer)) != -1;) bytes.write(buffer, 0, count);
+            lastError.set(""); return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception error) { lastError.set(error.toString()); return null; }
     }
 
     /**
@@ -384,20 +333,12 @@ public class FileUtils {
      * @return           成功写入返回true，否则返回false。
      */
     public static boolean writeUriFile(Context context, Uri uri, String content, boolean append) {
-        try {
-            // 根据append参数决定是覆盖还是追加模式
-            OutputStream outputStream = context.getContentResolver().openOutputStream(uri, append ? "wa" : "w");
-            if (outputStream != null) {
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream));
-                writer.write(content);
-                writer.flush();
-                writer.close();
-                return true;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
+        // 文档提供器支持的覆盖模式为 wt，单独的 w 不保证截断旧内容。
+        try (OutputStream output = context.getContentResolver().openOutputStream(uri, append ? "wa" : "wt")) {
+            if (output == null) throw new IOException("无法打开 URI");
+            output.write(content.getBytes(StandardCharsets.UTF_8)); output.flush();
+            lastError.set(""); return true;
+        } catch (Exception error) { lastError.set(error.toString()); return false; }
     }
 
     /**

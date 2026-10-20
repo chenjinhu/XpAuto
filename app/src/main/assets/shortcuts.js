@@ -1,5 +1,6 @@
 // 选择器操作临时获取节点并及时回收；传入现有节点时由调用者管理生命周期。
 const __xpautoWithNode = (target, action) => {
+    target = __xpautoUnwrapNode(target);
     if (target == null) return false;
     const owns = typeof target.exists === 'function' && typeof target.info === 'function';
     const node = owns ? target : target.getOneNodeInfo(0);
@@ -16,7 +17,7 @@ const __xpautoRect = value => {
 const clickEx = target => __xpautoWithNode(target, node => node.clickEx());
 const longClickEx = target => __xpautoWithNode(target, node => node.longClickEx());
 const __xpautoRandomClick = (target, direct) => {
-    const nodes = target.getNodeInfo(0);
+    const nodes = __xpautoUnwrapNode(target).getNodeInfo(0);
     if (!nodes.length) return false;
     try { const node = nodes[random(0,nodes.length-1)]; return direct ? node.clickEx() : clickRandomRect(node.bounds()); }
     finally { for (const node of nodes) node.recycle(); }
