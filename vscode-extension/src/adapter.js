@@ -7,8 +7,7 @@ const { ProtocolClient } = require('./protocol');
 const { remoteText } = require('./device');
 const { collectProject } = require('./project');
 
-// One DAP session and one device runtime. Script execution starts only after
-// configurationDone, once every source breakpoint has been installed in V8.
+// 每个调试会话对应一个手机运行时；断点配置完成后才请求执行脚本。
 class XpAutoDebugAdapter {
     constructor(manager) {
         this.manager = manager;
@@ -42,10 +41,14 @@ class XpAutoDebugAdapter {
     handleMessage(request) {
         if (request.type !== 'request') return;
         this.dispatch(request).catch(error => {
+            const startupFailed = request.command === 'launch' || request.command === 'configurationDone'
+                || (!this.started && ['setBreakpoints', 'setExceptionBreakpoints'].includes(request.command));
+            // 启动失败也必须输出原因并结束会话，避免控制台停留在“等待断点配置”。
+            if (startupFailed) this.output(`[XpAuto] 启动失败：${error.message}`, 'stderr');
             this.response(request, {}, error);
-            if (request.command === 'launch') {
-                this.output(error.message, 'stderr');
+            if (startupFailed) {
                 this.finish();
+                this.client?.close();
             }
         });
     }
@@ -81,7 +84,7 @@ class XpAutoDebugAdapter {
                 await this.client.connect();
                 await this.client.request('Runtime.enable');
                 if (!args.noDebug) await this.client.request('Debugger.enable');
-                this.output(`[XpAuto] 已连接 ${this.manager.serial}，脚本已同步，等待断点配置。`);
+                this.output(`[XpAuto] 已连接 ${this.manager.serial}，正在配置调试环境。`);
                 this.response(request);
                 this.event('initialized');
                 return;
@@ -102,6 +105,7 @@ class XpAutoDebugAdapter {
                         const entry = await this.client.request('Debugger.setInstrumentationBreakpoint', { instrumentation: 'beforeScriptExecution' });
                         this.entryBreakpoint = entry.breakpointId;
                     }
+                    this.output('[XpAuto] 正在启动脚本…');
                     await this.client.request('XpAuto.run', {
                         source: this.source, resourceName: this.sourceUrl, noDebug: !!this.config.noDebug, project: this.project,
                     });
@@ -246,6 +250,9 @@ class XpAutoDebugAdapter {
             case 'Debugger.resumed': this.event('continued', { threadId: 1, allThreadsContinued: true }); break;
             case 'Runtime.consoleAPICalled':
                 this.output(remoteText(params.args), params.type === 'error' ? 'stderr' : 'console');
+                break;
+            case 'XpAuto.running':
+                this.output(`[XpAuto] 开始运行 ${path.basename(this.program)}。`);
                 break;
             case 'XpAuto.finished':
                 this.output(`[XpAuto] ${params.cancelled ? '已停止' : params.success ? '已完成' : '运行失败'} (${params.elapsedMs} ms)`);
