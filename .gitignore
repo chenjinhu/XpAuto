@@ -15,3 +15,4 @@
 local.properties
 node_modules/
 *.vsix
+/vscode-extension/resources/mobile/

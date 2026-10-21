@@ -5,6 +5,7 @@ const { DeviceManager, labels } = require('./device');
 const { XpAutoDebugAdapter } = require('./adapter');
 const { registerCompletions } = require('./completions');
 const { UiInspector } = require('./inspector');
+const { bundledApk, checkApk } = require('./apk');
 let manager;
 
 function activate(context) {
@@ -87,6 +88,29 @@ function activate(context) {
     command('xpauto.disconnect', async () => {
         for (const session of activeSessions.values()) await vscode.debug.stopDebugging(session);
         await manager.disconnect();
+    });
+    command('xpauto.install', async serial => {
+        if (activeSessions.size) throw new Error('请先停止当前 XpAuto 调试会话，再安装应用。');
+        let apk = config().get('apkPath', '').trim();
+        if (!apk) apk = await bundledApk(context.extensionPath);
+        if (!apk) {
+            const files = await vscode.window.showOpenDialog({canSelectMany: false,
+                openLabel: '安装 XpAuto', filters: {'Android 安装包': ['apk']},
+                title: '选择 XpAuto APK（当前开发版本未附带安装包）'});
+            if (!files?.length) return;
+            apk = files[0].fsPath;
+        }
+        await checkApk(apk);
+        if (activeSessions.size) throw new Error('请先停止当前 XpAuto 调试会话，再安装应用。');
+        const result = await vscode.window.withProgress({location: vscode.ProgressLocation.Notification,
+            title: 'XpAuto：安装到设备', cancellable: false}, progress =>
+            manager.installApk(apk, serial, message => progress.report({message})));
+        if (!result) return;
+        if (result.launchError) {
+            vscode.window.showWarningMessage(`XpAuto 已安装到 ${result.serial}，自动打开失败，请在手机手动打开。${result.launchError}`);
+        } else {
+            vscode.window.showInformationMessage(`XpAuto 已安装到 ${result.serial}，请在手机完成权限授权并开启运行环境。`);
+        }
     });
     const start = async noDebug => {
         const editor = vscode.window.activeTextEditor;

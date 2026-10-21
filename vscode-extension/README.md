@@ -1,5 +1,9 @@
 # XpAuto
 
+0.10.0 新增 **安装 XpAuto 到设备**：侧栏下载图标和命令面板均可使用。插件随附 APK，无需 Android 工程或 Gradle；多设备时选择目标设备，覆盖安装保留数据，完成后自动打开手机应用。手机仍需完成权限授权和开启运行环境，之后点击连接设备。F5 只同步项目。
+
+需要安装其他 XpAuto 构建时，可设置 `xpauto.apkPath` 为本地 APK 的绝对路径。未捆绑 APK 的开发版本会显示文件选择框。运行或调试中需先停止会话；安装失败显示 ADB 原始原因，不自动卸载或降级。
+
 0.9.0 新增 CommonJS 多文件项目、资源同步、`device` 与应用列表、内置悬浮窗控制、EasyClick 节点属性提示。首次更新对应 APK 后，日常 F5 只同步 JS 与资源。用法见工程 `docs/project-api.md`，示例见 `examples/project/`。
 
 0.8.0 适配 vixBrowser 1.4：增加 `browser.getLoading()` 及 `status`、`progress` 代码提示，完整状态新增 `load_status`、`progress`。页面等待识别完成与失败状态，并兼容旧版浏览器。已有启动、导航、页面 JS、配置、缓存与历史操作均保留。手机端需更新一次 APK；完整文档位于工程 `docs/browser-api.md`，示例为 `examples/browser/main.js`。默认连接同机 `127.0.0.1:8765`，无需 Root。
@@ -37,7 +41,7 @@
 
 默认同步入口目录的 JS/CJS/JSON；launch 配置可设置 `projectRoot`、`resources` 和 `nodeMode`。入口与依赖在 CommonJS 局部作用域运行，支持 `require()`、`module.exports` 和依赖断点，手机无障碍 SDK 仍为全局 API。资源用 `file.readFile(__dirname + "/assets/文件")` 读取。
 
-开发与验证：`npm ci`、`npm test`、`npm run package`。仓库根目录的 `node scripts/verify-vscode-debug.mjs` 使用真实 VS Code 扩展宿主和已运行的手机做集成测试。
+开发与验证：`npm ci`、`npm test`、`npm run package`。打包会先验证并收录已有的 `app/build/outputs/apk/debug/app-debug.apk`，不会自动构建；`XPAUTO_APK_PATH` 可选择其他 XpAuto APK，`XPAUTO_AAPT` 可指定 Android aapt 路径。需要先在发布机安装 Android build-tools。仓库根目录的 `node scripts/verify-vscode-debug.mjs` 使用真实 VS Code 扩展宿主和已运行的手机做集成测试。
 
 ## 0.2.1：悬浮窗函数提示
 

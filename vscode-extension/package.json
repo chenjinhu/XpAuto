@@ -2,7 +2,7 @@
   "name": "xpauto",
   "displayName": "XpAuto",
   "description": "连接 Android，调试 JavaScript、提供代码提示、抓取 UI 节点与生成选择器代码。",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "xpauto",
   "license": "UNLICENSED",
   "engines": {
@@ -31,6 +31,11 @@
         "command": "xpauto.connect",
         "title": "XpAuto: 连接设备",
         "icon": "$(plug)"
+      },
+      {
+        "command": "xpauto.install",
+        "title": "XpAuto: 安装 XpAuto 到设备",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "xpauto.disconnect",
@@ -92,6 +97,11 @@
           "minimum": 1024,
           "maximum": 65535,
           "description": "手机开发服务端口。"
+        },
+        "xpauto.apkPath": {
+          "type": "string",
+          "default": "",
+          "description": "可选的本地 XpAuto APK 绝对路径；为空时使用插件随附安装包。仅点击安装命令时使用，F5 不安装。"
         }
       }
     },
@@ -193,7 +203,7 @@
     "viewsWelcome": [
       {
         "view": "xpauto.device",
-        "contents": "手机开启开发服务并通过 USB 连接。\n[连接设备](command:xpauto.connect)\n[UI 节点抓取与分析](command:xpauto.inspect)",
+        "contents": "通过 USB 或 ADB 连接 Android 设备。\n[安装 XpAuto 到设备](command:xpauto.install)\n[连接设备](command:xpauto.connect)\n[UI 节点抓取与分析](command:xpauto.inspect)",
         "when": "!xpauto.connected"
       }
     ],
@@ -228,13 +238,19 @@
           "command": "xpauto.inspect",
           "when": "view == xpauto.device",
           "group": "navigation@6"
+        },
+        {
+          "command": "xpauto.install",
+          "when": "view == xpauto.device",
+          "group": "navigation@7"
         }
       ]
     }
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "package": "vsce package --allow-missing-repository --out xpauto-0.9.0.vsix"
+    "package": "vsce package --allow-missing-repository --out xpauto-0.10.0.vsix",
+    "prepackage": "node scripts/bundle-apk.js"
   },
   "dependencies": {
     "typescript": "5.9.3",
